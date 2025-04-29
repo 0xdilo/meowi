@@ -1,0 +1,24 @@
+[package]
+name = "meowi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.97"
+arboard = "3.5.0"
+async-stream = "0.3.6"
+clipboard = "0.5.0"
+config = "0.15.11"
+crossterm = "0.29.0"
+directories = "6.0.0"
+futures-util = "0.3.31"
+ratatui = "0.29.0"
+regex = "1.11.1"
+reqwest = { version = "0.12.15", features = ["json", "stream"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+syntect = "5.2.0"
+textwrap = "0.16.2"
+tokio = { version = "1.44.2", features = ["full"] }
+toml = "0.8.20"
+uuid = { version = "1.16.0", features = ["v4"] }
