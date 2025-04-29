@@ -156,12 +156,6 @@ impl<'a> App<'a> {
         app
     }
 
-    // Parse code blocks from a message
-    pub fn parse_code_blocks(&mut self, msg_idx: usize, content: &str) {
-        self.code_blocks
-            .extend(self.parse_code_blocks_helper(msg_idx, content));
-    }
-
     pub fn toggle_sidebar(&mut self) {
         self.sidebar_visible = !self.sidebar_visible;
         if !self.sidebar_visible {

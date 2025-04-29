@@ -233,4 +233,32 @@ For input `n = 5`, both programs will output:
 Factorial of 5 is 120
 ```
 
-If you meant something else by "write a python a rust function" (e.g., calling Rust from Python or vice versa), please clarify! I can provide details on using tools like `pyo3` for Python-Rust interop.
+If you meant something else by "write a python a rust function" (e.g., calling Rust from Python or vice versa), please clarify! I can provide details on using tools like `pyo3` for Python-Rust interop.Ciao! Come posso aiutarti? Se hai bisogno di altre funzioni in Python o Rust, o se hai domande su qualcos'altro, fammi sapere! 😊Se desideri continuare con un esempio di codice, ecco una semplice funzione "Ciao" in entrambe le lingue come bonus:
+
+### Python
+```python
+def saluta(nome):
+    """
+    Restituisce un saluto personalizzato.
+    """
+    return f"Ciao, {nome}!"
+
+# Esempio di utilizzo
+print(saluta("Mario"))  # Output: Ciao, Mario!
+```
+
+### Rust
+```rust
+fn saluta(nome: &str) -> String {
+    // Restituisce un saluto personalizzato
+    format!("Ciao, {}!", nome)
+}
+
+fn main() {
+    let nome = "Mario";
+    let messaggio = saluta(nome);
+    println!("{}", messaggio); // Output: Ciao, Mario!
+}
+```
+
+Fammi sapere se hai bisogno di altro!

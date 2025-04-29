@@ -5,7 +5,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::{
         Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
         Tabs,
@@ -15,7 +15,6 @@ use std::sync::OnceLock;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use syntect::util::LinesWithEndings;
 use textwrap::wrap;
 
 pub fn draw(f: &mut Frame<'_>, app: &mut App) {
@@ -121,7 +120,66 @@ fn draw_sidebar(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_stateful_widget(settings_list, sidebar_chunks[1], &mut settings_state);
 }
 
-use ratatui::text::Span;
+#[derive(Debug)]
+enum MessageSegment {
+    Text(String),
+    Code {
+        language: Option<String>,
+        content: String,
+    },
+}
+
+/// Parse a message into alternating text and code segments.
+/// This ensures code is not duplicated in both text and code block rendering.
+
+fn parse_message_segments(content: &str) -> Vec<MessageSegment> {
+    let mut segments = Vec::new();
+    let mut lines = content.lines().peekable();
+    let mut current_text = Vec::new();
+
+    while let Some(line) = lines.next() {
+        if let Some(rest) = line.strip_prefix("```") {
+            // Flush current text
+            if !current_text.is_empty() {
+                segments.push(MessageSegment::Text(current_text.join("\n")));
+                current_text.clear();
+            }
+            let lang = if !rest.trim().is_empty() {
+                Some(rest.trim().to_string())
+            } else {
+                None
+            };
+            let mut code_lines = Vec::new();
+            while let Some(code_line) = lines.next() {
+                if code_line.trim() == "```" {
+                    break;
+                }
+                code_lines.push(code_line);
+            }
+            // Remove first code line if it matches the language (common LLM bug)
+            let code_content =
+                if let (Some(ref l), Some(first)) = (lang.as_ref(), code_lines.first()) {
+                    if first.trim().eq_ignore_ascii_case(l.trim()) {
+                        code_lines[1..].join("\n")
+                    } else {
+                        code_lines.join("\n")
+                    }
+                } else {
+                    code_lines.join("\n")
+                };
+            segments.push(MessageSegment::Code {
+                language: lang,
+                content: code_content,
+            });
+        } else {
+            current_text.push(line);
+        }
+    }
+    if !current_text.is_empty() {
+        segments.push(MessageSegment::Text(current_text.join("\n")));
+    }
+    segments
+}
 
 fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     const MAX_VISIBLE_LINES_PER_MESSAGE: usize = 10;
@@ -145,10 +203,7 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         .fg(Color::White)
         .bg(Color::Black)
         .add_modifier(Modifier::BOLD);
-    let border_style = Style::default().fg(Color::DarkGray);
-    let shortcut_style = Style::default()
-        .fg(Color::Cyan)
-        .add_modifier(Modifier::BOLD);
+    let border_style = Style::default().fg(Color::LightGreen); // Use the selected tab color
 
     if app.has_valid_chat() {
         let text_width = (chunks[0].width as usize).saturating_sub(4);
@@ -176,164 +231,121 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 })
                 .unwrap_or_default();
 
-            // Now parse code blocks and build line cache
             for (msg_idx, role, content) in messages {
-                app.parse_code_blocks(msg_idx, &content);
+                let mut msg_lines = Vec::new();
+                let mut is_truncated = false;
 
-                let mut wrapped_lines = Vec::new();
-                let mut line_count = 0;
+                let segments = parse_message_segments(&content);
+                let mut code_block_count = 0;
 
-                let filtered: String = content
-                    .lines()
-                    .filter(|l| !l.trim().starts_with("```"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                for segment in segments {
+                    match segment {
+                        MessageSegment::Text(text) => {
+                            let wrapped_lines = wrap(&text, text_width);
+                            let is_trunc = app.truncated_messages.contains(&msg_idx)
+                                && wrapped_lines.len() > MAX_VISIBLE_LINES_PER_MESSAGE;
+                            let lines: Vec<Line> = wrapped_lines
+                                .iter()
+                                .take(if is_trunc {
+                                    MAX_VISIBLE_LINES_PER_MESSAGE
+                                } else {
+                                    wrapped_lines.len()
+                                })
+                                .map(|line| {
+                                    Line::from(line.to_string()).style(if role == "user" {
+                                        user_style
+                                    } else {
+                                        assistant_style
+                                    })
+                                })
+                                .collect();
+                            msg_lines.extend(lines);
+                            if is_trunc {
+                                is_truncated = true;
+                            }
+                        }
+                        MessageSegment::Code { language, content } => {
+                            // Save code block for copy navigation
+                            app.code_blocks.push((
+                                msg_idx,
+                                crate::app::CodeBlock {
+                                    content: content.clone(),
+                                    language: language.clone(),
+                                    start_line: msg_lines.len(),
+                                    end_line: msg_lines.len() + content.lines().count() - 1,
+                                },
+                            ));
 
-                let non_code_lines = wrap(&filtered, text_width);
-                for line in non_code_lines {
-                    wrapped_lines.push((line.to_string(), false, None::<String>));
-                    line_count += 1;
+                            // Add blank line before code block
+                            msg_lines.push(Line::raw(""));
+                            // Top border with lang
+                            let lang = language.as_deref().unwrap_or("code");
+                            let label = format!(" {} ", lang);
+
+                            let area_width = chunks[0].width.saturating_sub(2) as usize; // minus padding
+                            let label = format!(" {} ", lang);
+                            let border_len = area_width.saturating_sub(10 + label.len());
+                            let top = format!("┌─{}{}┐", label, "─".repeat(border_len));
+                            msg_lines.push(Line::from(vec![Span::styled(top, border_style)]));
+
+                            // Syntax highlight each code line
+                            let syntax_set = get_syntax_set();
+                            let theme = get_theme();
+                            let syntax = syntax_set
+                                .find_syntax_by_token(lang)
+                                .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
+                            let mut h = HighlightLines::new(syntax, theme);
+                            for code in content.lines() {
+                                let ranges = h.highlight_line(code, syntax_set).unwrap();
+                                let mut spans = vec![Span::styled("│ ", border_style)];
+                                for (style, text) in ranges {
+                                    spans.push(Span::styled(
+                                        text.to_string(),
+                                        Style::default()
+                                            .fg(Color::Rgb(
+                                                style.foreground.r,
+                                                style.foreground.g,
+                                                style.foreground.b,
+                                            ))
+                                            .bg(Color::Black),
+                                    ));
+                                }
+                                msg_lines.push(Line::from(spans));
+                            }
+
+                            // Bottom border with copy hint, right-aligned
+                            let shortcuts = vec!["c", "C", "x", "X"];
+
+                            let hint = shortcuts
+                                .get(code_block_count)
+                                .map(|s| format!(" Copy [{}] ", s))
+                                .unwrap_or_default();
+                            let border_len = area_width.saturating_sub(10 + hint.len());
+                            let bottom = format!("└{}{}┘", "─".repeat(border_len), hint);
+                            msg_lines.push(Line::from(vec![Span::styled(bottom, border_style)]));
+
+                            code_block_count += 1;
+                        }
+                    }
                 }
 
-                let is_truncated = app.truncated_messages.contains(&msg_idx)
-                    && wrapped_lines.len() > MAX_VISIBLE_LINES_PER_MESSAGE;
-
-                let styled_lines: Vec<Line> = wrapped_lines
-                    .iter()
-                    .take(if is_truncated {
-                        MAX_VISIBLE_LINES_PER_MESSAGE
-                    } else {
-                        wrapped_lines.len()
-                    })
-                    .enumerate()
-                    .map(|(line_idx, (line, is_code, _lang))| {
-                        let code_block = app.code_blocks.iter().find(|(m_idx, cb)| {
-                            *m_idx == msg_idx
-                                && line_idx >= cb.start_line
-                                && line_idx < cb.start_line + cb.content.lines().count()
-                        });
-
-                        if let Some((_, cb)) = code_block {
-                            Line::from(vec![Span::styled(line.clone(), code_style)])
-                        } else {
-                            Line::from(line.clone()).style(if role == "user" {
-                                user_style
-                            } else {
-                                assistant_style
-                            })
-                        }
-                    })
-                    .collect();
-
-                app.line_cache.push((styled_lines, is_truncated));
+                app.line_cache.push((msg_lines, is_truncated));
             }
             app.need_rebuild_cache = false;
         }
 
-        // --- enhanced code blocks with syntax highlighting and proper fences ---
-        let syntax_set = get_syntax_set();
-        let theme = get_theme();
-        let shortcuts = vec![
-            "c".to_string(),
-            "C".to_string(),
-            "x".to_string(),
-            "X".to_string(),
-        ];
-
+        // Now build buffer_lines and line_to_message for navigation
         let mut global_line_idx = 0;
         for (msg_idx, (lines, is_truncated)) in app.line_cache.iter().enumerate() {
-            let cbs: Vec<_> = app
-                .code_blocks
-                .iter()
-                .enumerate()
-                .filter(|(_, (m, _))| *m == msg_idx)
-                .collect();
-            let mut next_cb = cbs.iter().peekable();
-            let mut line_idx = 0;
-
-            while line_idx < lines.len() {
-                if let Some((cb_i, (_, cb))) = next_cb.peek().cloned() {
-                    if line_idx == cb.start_line {
-                        // blank line before
-                        let mut newline = Line::raw("");
-                        if global_line_idx == app.cursor_line {
-                            newline = newline.patch_style(cursor_style);
-                        }
-                        buffer_lines.push(newline);
-                        line_to_message.push((msg_idx, false));
-                        global_line_idx += 1;
-
-                        // top border with lang
-                        let lang = cb.language.as_deref().unwrap_or("code");
-                        let label = format!(" {} ", lang);
-                        let width = text_width;
-                        let dashes = width.saturating_sub(2 + label.len());
-                        let top = format!("┌─{}{}┐", label, "─".repeat(dashes));
-                        let mut top_line = Line::from(vec![Span::styled(top, border_style)]);
-                        if global_line_idx == app.cursor_line {
-                            top_line = top_line.patch_style(cursor_style);
-                        }
-                        buffer_lines.push(top_line);
-                        line_to_message.push((msg_idx, false));
-                        global_line_idx += 1;
-
-                        // syntax highlight each code line
-                        let syntax = syntax_set
-                            .find_syntax_by_token(lang)
-                            .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
-                        let mut h = HighlightLines::new(syntax, theme);
-                        for code in cb.content.lines() {
-                            let ranges = h.highlight_line(code, syntax_set).unwrap();
-                            let mut spans = vec![Span::styled("│ ", border_style)];
-                            for (style, text) in ranges {
-                                spans.push(Span::styled(
-                                    text.to_string(),
-                                    Style::default()
-                                        .fg(Color::Rgb(
-                                            style.foreground.r,
-                                            style.foreground.g,
-                                            style.foreground.b,
-                                        ))
-                                        .bg(Color::Black),
-                                ));
-                            }
-                            buffer_lines.push(Line::from(spans));
-                            line_to_message.push((msg_idx, false));
-                            global_line_idx += 1;
-                        }
-
-                        // bottom border with copy hint, right-aligned
-                        let hint = shortcuts
-                            .get(*cb_i)
-                            .map(|s| format!(" Copy [{}] ", s))
-                            .unwrap_or_default();
-                        let dash_count = width.saturating_sub(2 + hint.len());
-                        let bottom = format!("└{}{}┘", "─".repeat(dash_count), hint);
-                        let mut bottom_line = Line::from(vec![Span::styled(bottom, border_style)]);
-                        if global_line_idx == app.cursor_line {
-                            bottom_line = bottom_line.patch_style(cursor_style);
-                        }
-                        buffer_lines.push(bottom_line);
-                        line_to_message.push((msg_idx, false));
-                        global_line_idx += 1;
-
-                        // skip all code lines in wrapped 'lines'
-                        line_idx = cb.start_line + cb.content.lines().count();
-                        next_cb.next();
-                        continue;
-                    }
-                }
-                // non-code line
-                let mut styled_line = lines[line_idx].clone();
+            for (line_idx, line) in lines.iter().enumerate() {
+                let mut styled_line = line.clone();
                 if global_line_idx == app.cursor_line {
                     styled_line = styled_line.patch_style(cursor_style);
                 }
                 buffer_lines.push(styled_line);
                 line_to_message.push((msg_idx, false));
                 global_line_idx += 1;
-                line_idx += 1;
             }
-
             if *is_truncated {
                 let mut ellipsis_line =
                     Line::from("...".to_string()).style(Style::default().fg(Color::Gray));
@@ -356,7 +368,7 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         app.line_to_message = line_to_message.clone();
 
         let total_lines = buffer_lines.len();
-        let viewport_height = chunks[0].height.saturating_sub(2) as usize;
+        let viewport_height = chunks[0].height.saturating_sub(10) as usize;
 
         if total_lines > 0 && app.cursor_line >= total_lines {
             app.cursor_line = total_lines - 1;
@@ -369,10 +381,11 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         } else if app.chat_scroll as usize > max_scroll {
             app.chat_scroll = max_scroll as u16;
         }
+
         if app.cursor_line < app.chat_scroll as usize {
             app.chat_scroll = app.cursor_line as u16;
         } else if app.cursor_line >= app.chat_scroll as usize + viewport_height {
-            app.chat_scroll = (app.cursor_line - viewport_height + 1) as u16;
+            app.chat_scroll = (app.cursor_line + 1).saturating_sub(viewport_height) as u16;
         }
 
         let is_focused = app.focus == crate::app::Focus::Chat;
