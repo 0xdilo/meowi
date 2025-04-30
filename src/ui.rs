@@ -1,4 +1,5 @@
-use crate::app::{App, Mode, SettingsTab};
+use crate::app::{App, CustomModelStage, Mode, SettingsTab};
+use crate::config::CustomModel;
 use ratatui::widgets::ListState;
 use ratatui::widgets::Padding;
 use ratatui::{
@@ -32,7 +33,9 @@ pub fn draw(f: &mut Frame<'_>, app: &mut App) {
     }
 
     match app.mode {
-        Mode::Settings | Mode::ApiKeyInput => draw_settings(f, app, chunks[1]),
+        Mode::Settings | Mode::ApiKeyInput | Mode::CustomModelInput => {
+            draw_settings(f, app, chunks[1])
+        }
         Mode::ModelSelect => draw_model_select(f, app, chunks[1]),
         _ => draw_chat(f, app, chunks[1]),
     }
@@ -491,12 +494,23 @@ fn draw_model_select(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_stateful_widget(list, area, &mut state);
 }
 
-fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
+// helper to mask an API key
+fn mask_api_key(k: &str) -> String {
+    if k.len() <= 4 {
+        "".repeat(k.len())
+    } else {
+        let (head, tail) = k.split_at(k.len() - 4);
+        format!("{}{}", "".repeat(head.len()), tail)
+    }
+}
+
+pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(1)])
         .split(area);
 
+    // tabs
     let titles = ["Providers", "Shortcuts"]
         .iter()
         .cloned()
@@ -518,51 +532,146 @@ fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
 
     f.render_widget(tabs, chunks[0]);
 
-    match app.mode {
-        Mode::ApiKeyInput => {
-            let paragraph = Paragraph::new(format!("API Key: {}", app.api_key_input)).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Enter API Key"),
-            );
-            f.render_widget(paragraph, chunks[1]);
-        }
-        _ => match app.settings_tab {
-            SettingsTab::Providers => {
-                let mut items = Vec::new();
-                for p in &app.providers {
-                    let prefix = if p.expanded { "[-]" } else { "[+]" };
-                    items.push(ListItem::new(format!("{} {}", prefix, p.name)));
-                    if p.expanded {
-                        for m in &p.models {
-                            let checked = if p.enabled_models.contains(m) {
-                                "[x]"
-                            } else {
-                                "[ ]"
-                            };
-                            items.push(ListItem::new(format!("    {} {}", checked, m)));
-                        }
-                    }
-                }
+    // split content into main + feedback line
+    let content_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(chunks[1]);
 
+    // MODE: entering API key?
+    if app.mode == Mode::ApiKeyInput {
+        let masked = mask_api_key(&app.api_key_old);
+        let text = format!("Current: {}\nNew API Key: {}", masked, app.api_key_input);
+        let paragraph = Paragraph::new(text).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Enter API Key"),
+        );
+        f.render_widget(paragraph, content_chunks[0]);
+    }
+    // MODE: adding custom model
+    else if app.mode == Mode::CustomModelInput {
+        match app.custom_model_input_stage.unwrap() {
+            CustomModelStage::Name => {
+                let p = Paragraph::new(format!("Model Name: {}", app.custom_model_name_input))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Add Custom Model—Name"),
+                    );
+                f.render_widget(p, content_chunks[0]);
+            }
+            CustomModelStage::Url => {
+                let p = Paragraph::new(format!("Endpoint URL: {}", app.custom_model_url_input))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Add Custom Model—URL"),
+                    );
+                f.render_widget(p, content_chunks[0]);
+            }
+            CustomModelStage::ModelName => {
+                let p = Paragraph::new(format!("Model ID: {}", app.custom_model_model_input))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Add Custom Model—Model Name"),
+                    );
+                f.render_widget(p, content_chunks[0]);
+            }
+            CustomModelStage::ApiKeyChoice => {
+                // List all providers + "Custom"
+                let mut items = app
+                    .providers
+                    .iter()
+                    .map(|p| p.name.clone())
+                    .collect::<Vec<_>>();
+                items.push("Custom".to_string());
+                let selected = app
+                    .custom_model_api_key_choice
+                    .as_ref()
+                    .and_then(|choice| items.iter().position(|n| n == choice))
+                    .unwrap_or(0);
+                let list_items = items
+                    .iter()
+                    .map(|n| ListItem::new(n.clone()))
+                    .collect::<Vec<_>>();
                 let mut state = ListState::default();
-                state.select(Some(app.selected_line));
-
-                let list = List::new(items)
-                    .block(Block::default().borders(Borders::ALL).title("Providers"))
+                state.select(Some(selected));
+                let list = List::new(list_items)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("API Key Source"),
+                    )
                     .highlight_style(
                         Style::default()
                             .bg(Color::Blue)
                             .add_modifier(Modifier::BOLD),
                     );
+                f.render_stateful_widget(list, content_chunks[0], &mut state);
+            }
+            CustomModelStage::ApiKeyInput => {
+                let p = Paragraph::new(format!("API Key: {}", app.custom_model_api_key_input))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Enter API Key"),
+                    );
+                f.render_widget(p, content_chunks[0]);
+            }
+        }
+    }
+    // normal providers list
+    else if app.settings_tab == SettingsTab::Providers {
+        let mut items = Vec::new();
+        // built‐in providers
+        for p in &app.providers {
+            let prefix = if p.expanded { "[-]" } else { "[+]" };
+            items.push(ListItem::new(format!("{} {}", prefix, p.name)));
+            if p.expanded {
+                for m in &p.models {
+                    let checked = if p.enabled_models.contains(m) {
+                        "[x]"
+                    } else {
+                        "[ ]"
+                    };
+                    items.push(ListItem::new(format!("    {} {}", checked, m)));
+                }
+            }
+        }
+        // custom models header
+        items.push(ListItem::new("Custom Models:"));
+        // each custom model
+        for cm in &app.custom_models {
+            items.push(ListItem::new(format!("  {} → {}", cm.name, cm.endpoint)));
+        }
+        // add‐new entry
+        items.push(ListItem::new("  [Add Custom Model]"));
 
-                f.render_stateful_widget(list, chunks[1], &mut state);
-            }
-            SettingsTab::Shortcuts => {
-                let paragraph = Paragraph::new("Shortcut customization coming soon!")
-                    .block(Block::default().borders(Borders::ALL).title("Shortcuts"));
-                f.render_widget(paragraph, chunks[1]);
-            }
-        },
+        let mut state = ListState::default();
+        state.select(Some(app.selected_line));
+        let list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Providers"))
+            .highlight_style(
+                Style::default()
+                    .bg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+            );
+        f.render_stateful_widget(list, content_chunks[0], &mut state);
+    } else {
+        // Shortcuts tab
+        let paragraph = Paragraph::new("Shortcut customization coming soon!")
+            .block(Block::default().borders(Borders::ALL).title("Shortcuts"));
+        f.render_widget(paragraph, content_chunks[0]);
+    }
+
+    // feedback line
+    if let Some(err) = &app.error_message {
+        let p = Paragraph::new(err.clone()).style(Style::default().fg(Color::Red));
+        f.render_widget(p, content_chunks[1]);
+    } else if let Some(info) = &app.info_message {
+        let p = Paragraph::new(info.clone()).style(Style::default().fg(Color::Green));
+        f.render_widget(p, content_chunks[1]);
     }
 }

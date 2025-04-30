@@ -32,4 +32,3 @@ pub async fn copy_to_clipboard(text: &str) -> Result<()> {
         Ok(())
     }
 }
-

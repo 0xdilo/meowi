@@ -1,3 +1,4 @@
+use crate::CustomModel;
 use ratatui::text::Line;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,15 @@ pub enum Focus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CustomModelStage {
+    Name,
+    Url,
+    ModelName,
+    ApiKeyChoice, // NEW
+    ApiKeyInput,  // NEW
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Normal,
     Insert,
@@ -28,6 +38,7 @@ pub enum Mode {
     ModelSelect,
     ApiKeyInput,
     RenameChat,
+    CustomModelInput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,6 +104,17 @@ pub struct App<'a> {
     pub stream_tasks: HashMap<String, StreamTask>,
     pub error_message: Option<String>,
     pub code_blocks: Vec<(usize, CodeBlock)>, // (message_idx, CodeBlock)
+    pub api_key_old: String,
+    pub api_key_editing_started: bool,
+    pub info_message: Option<String>,
+    // for custom model flow
+    pub custom_models: Vec<CustomModel>,
+    pub custom_model_name_input: String,
+    pub custom_model_url_input: String,
+    pub custom_model_input_stage: Option<CustomModelStage>,
+    pub custom_model_model_input: String,
+    pub custom_model_api_key_choice: Option<String>, // provider name or "Custom"
+    pub custom_model_api_key_input: String,
 }
 
 impl<'a> App<'a> {
@@ -149,6 +171,16 @@ impl<'a> App<'a> {
             stream_tasks: HashMap::new(),
             error_message: None,
             code_blocks: Vec::new(),
+            api_key_old: String::new(),
+            api_key_editing_started: false,
+            info_message: None,
+            custom_models: Vec::new(),
+            custom_model_name_input: String::new(),
+            custom_model_url_input: String::new(),
+            custom_model_input_stage: None,
+            custom_model_model_input: String::new(),
+            custom_model_api_key_choice: None,
+            custom_model_api_key_input: String::new(),
         };
         if app.chats.is_empty() {
             app.create_new_chat();
@@ -192,6 +224,10 @@ impl<'a> App<'a> {
             for m in &p.enabled_models {
                 list.push((p.name.clone(), m.clone()));
             }
+        }
+        // Add custom models
+        for cm in &self.custom_models {
+            list.push(("Custom".to_string(), cm.name.clone()));
         }
         list
     }

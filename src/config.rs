@@ -10,10 +10,12 @@ pub struct ProviderConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Settings {
-    pub providers: Vec<ProviderConfig>,
-    pub keybindings: KeyBindings,
-    pub copy_code_blocks: Vec<String>,
+pub struct CustomModel {
+    pub name: String,
+    pub endpoint: String,
+    pub model: String,
+    pub api_key: Option<String>,      // If Some, use this key
+    pub use_key_from: Option<String>, // If Some, use key from provider with this name
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -28,7 +30,16 @@ pub struct KeyBindings {
     pub exit_insert_mode: String,
     pub command_mode: String,
     pub open_settings: String,
-pub copy_code_blocks: Vec<String>, // e.g., ["c", "C", "x", "X"]
+    pub copy_code_blocks: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Settings {
+    pub providers: Vec<ProviderConfig>,
+    pub keybindings: KeyBindings,
+    pub copy_code_blocks: Vec<String>,
+    // ← new
+    pub custom_models: Vec<CustomModel>,
 }
 
 impl Default for Settings {
@@ -58,13 +69,25 @@ impl Default for Settings {
                 lock_focus: "l".to_string(),
                 delete_chat: "d".to_string(),
                 copy_code: "y".to_string(),
-                copy_code_blocks: vec!["c".to_string(), "C".to_string(), "x".to_string(), "X".to_string()],
+                copy_code_blocks: vec![
+                    "c".to_string(),
+                    "C".to_string(),
+                    "x".to_string(),
+                    "X".to_string(),
+                ],
                 insert_mode: "i".to_string(),
                 exit_insert_mode: "Esc".to_string(),
                 command_mode: ":".to_string(),
                 open_settings: "o".to_string(),
             },
-            copy_code_blocks: vec!["c".to_string(), "C".to_string(), "x".to_string(), "X".to_string()],
+            copy_code_blocks: vec![
+                "c".to_string(),
+                "C".to_string(),
+                "x".to_string(),
+                "X".to_string(),
+            ],
+            // ← new
+            custom_models: Vec::new(),
         }
     }
 }
@@ -79,7 +102,7 @@ pub fn get_config_path() -> PathBuf {
 pub fn load_or_create_config() -> Settings {
     let path = get_config_path();
     if path.exists() {
-        let content = fs::read_to_string(path).unwrap();
+        let content = fs::read_to_string(&path).unwrap();
         toml::from_str(&content).unwrap_or_else(|_| {
             let default = Settings::default();
             save_config(&default);

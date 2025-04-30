@@ -1,0 +1,735 @@
+Response status: 200 OK
+Chunk: event: response.created
+data: {"type":"response.created","response":{"id":"resp_6811629c5fa88191a35ac0fae47714ae007d94c3ecfdf07b","object":"response","created_at":1745969820,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":n
+Chunk: ull},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_6811629c5fa88191a35ac0fae47714ae007d94c3ecfdf07b","object":"response","created_at":1745969820,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","type":"message","status":"in_progress","content":[],"role":"assistant"}}
+
+
+Chunk: event: response.content_part.added
+data: {"type":"response.content_part.added","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":""}}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"C"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"iao"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"!"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" Sto"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" bene"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":","}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" grazie"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":","}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" e"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" tu"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"?"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" Come"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" posso"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" aiut"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"arti"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" oggi"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":"?"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"delta":" 😊"}
+
+
+Chunk: event: response.output_text.done
+data: {"type":"response.output_text.done","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"text":"Ciao! Sto bene, grazie, e tu? Come posso aiutarti oggi? 😊"}
+
+
+Chunk: event: response.content_part.done
+data: {"type":"response.content_part.done","item_id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":"Ciao! Sto bene, grazie, e tu? Come posso aiutarti oggi? 😊"}}
+
+
+Chunk: event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"Ciao! Sto bene, grazie, e tu? Come posso aiutarti oggi? 😊"}],"role":"assistant"}}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_6811629c5fa88191a35ac0fae47714ae007d94c3ecfdf07b","object":"response","created_at":1745969820,"status":"completed","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[{"id":"msg_6811629cf73c819185b1765d72fb3285007d94c3ecfdf07b","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"Ciao! Sto bene, grazie, e tu? Come posso aiutarti oggi? 😊"}],"role":"assistant"}],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"default","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":{"input_tokens":12,"input_tokens_details":{"cached_tokens":0},"output_tokens":19,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":31},"user":null,"metadata":{}}}
+
+
+Response status: 200 OK
+Chunk: event: response.created
+data: {"type":"response.created","response":{"id":"resp_68116324166081919617c2b7400c832f00c126857ffd3b20","object":"response","created_at":1745969956,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":n
+Chunk: ull},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_68116324166081919617c2b7400c832f00c126857ffd3b20","object":"response","created_at":1745969956,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","type":"message","status":"in_progress","content":[],"role":"assistant"}}
+
+
+Chunk: event: response.content_part.added
+data: {"type":"response.content_part.added","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":""}}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"It"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" looks"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" like"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" you"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" typed"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" **"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"cio"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"a"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\""}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"**"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"."}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" Did"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" mean"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" **"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"cia"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"o"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"**"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" ("}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"an"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" Italian"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" greeting"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" meaning"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" \""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"hello"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" or"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" \""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"good"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"bye"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"\")"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"?"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" Or"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" was"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" this"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" a"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" typo"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" or"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" acronym"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"’d"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" like"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" help"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" with"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"?"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" Please"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" clarify"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" so"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" I"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" can"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" assist"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"delta":"!"}
+
+
+Chunk: event: response.output_text.done
+data: {"type":"response.output_text.done","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"text":"It looks like you typed **\"cioa\"**. Did you mean **\"ciao\"** (an Italian greeting meaning \"hello\" or \"goodbye\")? Or was this a typo or acronym you’d like help with? Please clarify so I can assist you!"}
+
+
+Chunk: event: response.content_part.done
+data: {"type":"response.content_part.done","item_id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":"It looks like you typed **\"cioa\"**. Did you mean **\"ciao\"** (an Italian greeting meaning \"hello\" or \"goodbye\")? Or was this a typo or acronym you’d like help with? Please clarify so I can assist you!"}}
+
+
+Chunk: event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"It looks like you typed **\"cioa\"**. Did you mean **\"ciao\"** (an Italian greeting meaning \"hello\" or \"goodbye\")? Or was this a typo or acronym you’d like help with? Please clarify so I can assist you!"}],"role":"assistant"}}
+
+
+Chunk: event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_68116324166081919617c2b7400c832f00c126857ffd3b20","object":"response","created_at":1745969956,"status":"completed","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[{"id":"msg_68116324bcb881919d1e31e56075ecdd00c126857ffd3b20","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"It looks like you typed **\"cioa\"**. Did you mean **\"ciao\"** (an Italian greeting meaning \"hello\" or \"goodbye\")? Or was this a typo or acronym you’d like help with? Please clarify so I can assist you!"}],"role":"assistant"}],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"default","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":{"input_tokens":9,"input_tokens_details":{"cached_tokens":0},"output_tokens":57,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":66},"user":null,"metadata":{}}}
+
+
+Response status: 200 OK
+Chunk: event: response.created
+data: {"type":"response.created","response":{"id":"resp_6811633071f4819195233f3edffdd0bc0cddd7b8b98b8a92","object":"response","created_at":1745969968,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":n
+Chunk: ull},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_6811633071f4819195233f3edffdd0bc0cddd7b8b98b8a92","object":"response","created_at":1745969968,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+
+Chunk: event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","type":"message","status":"in_progress","content":[],"role":"assistant"}}
+
+
+Chunk: event: response.content_part.added
+data: {"type":"response.content_part.added","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":""}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"Of"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" course"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"!"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" I"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"’d"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" be"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" happy"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" to"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" help"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" write"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" Python"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" code"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"."}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" Could"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" you"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" please"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" clarify"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":":\n\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"-"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" What"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" type"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" of"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" code"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" do"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" need"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"?\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"   "}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" -"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" Is"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" it"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" a"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" greeting"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" program"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"?\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"   "}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" -"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" Something"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" more"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" specific"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"?\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"   "}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" -"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" Any"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" functionality"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" or"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" requirements"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"?\n\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"For"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" now"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":","}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" here"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" is"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" a"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" basic"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" example"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" that"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" prints"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" `\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"C"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"iao"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"\"`"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" as"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" a"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" greeting"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":":\n\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"```"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"python"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"print"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"(\""}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"C"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"iao"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"\")\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"``"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"`\n\n"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"Let"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" me"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" know"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" if"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" you"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" have"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" a"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" specific"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" task"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" or"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" project"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" in"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":" mind"}
+
+
+Chunk: event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"delta":"!"}
+
+
+Chunk: event: response.output_text.done
+data: {"type":"response.output_text.done","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"text":"Of course! I’d be happy to help you write Python code. Could you please clarify:\n\n- What type of code do you need?\n    - Is it a greeting program?\n    - Something more specific?\n    - Any functionality or requirements?\n\nFor now, here is a basic example that prints `\"Ciao\"` as a greeting:\n\n```python\nprint(\"Ciao\")\n```\n\nLet me know if you have a specific task or project in mind!"}
+
+
+Chunk: event: response.content_part.done
+data: {"type":"response.content_part.done","item_id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","output_index":0,"content_index":0,"part":{"type":"output_text","annotations":[],"text":"Of course! I’d be happy to help you write Python code. Could you please clarify:\n\n- What type of code do you need?\n    - Is it a greeting program?\n    - Something more specific?\n    - Any functionality or requirements?\n\nFor now, here is a basic example that prints `\"Ciao\"` as a greeting:\n\n```python\nprint(\"Ciao\")\n```\n\nLet me know if you have a specific task or project in mind!"}}
+
+
+Chunk: event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"Of course! I’d be happy to help you write Python code. Could you please clarify:\n\n- What type of code do you need?\n    - Is it a greeting program?\n    - Something more specific?\n    - Any functionality or requirements?\n\nFor now, here is a basic example that prints `\"Ciao\"` as a greeting:\n\n```python\nprint(\"Ciao\")\n```\n\nLet me know if you have a specific task or project in mind!"}],"role":"assistant"}}
+
+
+Chunk: event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_6811633071f4819195233f3edffdd0bc0cddd7b8b98b8a92","object":"response","created_at":1745969968,"status":"completed","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"model":"gpt-4.1-2025-04-14","output":[{"id":"msg_68116330eb948191a7c69840c27675d40cddd7b8b98b8a92","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"text":"Of course! I’d be happy to help you write Python code. Could you please clarify:\n\n- What type of code do you need?\n    - Is it a greeting program?\n    - Something more specific?\n    - Any functionality or requirements?\n\nFor now, here is a basic example that prints `\"Ciao\"` as a greeting:\n\n```python\nprint(\"Ciao\")\n```\n\nLet me know if you have a specific task or project in mind!"}],"role":"assistant"}],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"service_tier":"default","store":true,"temperature":1.0,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":1.0,"truncation":"disabled","usage":{"input_tokens":79,"input_tokens_details":{"cached_tokens":0},"output_tokens":92,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":171},"user":null,"metadata":{}}}
+
+
+Response status: 401 Unauthorized
+Chunk: {
+  "error": {
+    "message": "Missing bearer or basic authentication in header",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
