@@ -10,12 +10,27 @@ pub struct ProviderConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomModel {
-    pub name: String,
-    pub endpoint: String,
-    pub model: String,
-    pub api_key: Option<String>,      // If Some, use this key
-    pub use_key_from: Option<String>, // If Some, use key from provider with this name
+pub enum CustomModel {
+    Derived {
+        provider: String,
+        model: String,
+    },
+    Standalone {
+        name: String,
+        endpoint: String,
+        model: String,
+        api_key: Option<String>,
+        use_key_from: Option<String>,
+    },
+}
+
+impl CustomModel {
+    pub fn name(&self) -> &str {
+        match self {
+            CustomModel::Derived { model, .. } => model,
+            CustomModel::Standalone { name, .. } => name,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,55 +53,54 @@ pub struct Settings {
     pub providers: Vec<ProviderConfig>,
     pub keybindings: KeyBindings,
     pub copy_code_blocks: Vec<String>,
-    // ← new
     pub custom_models: Vec<CustomModel>,
 }
+
+const OPENAI_MODELS: &[&str] = &["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"];
+const ANTHROPIC_MODELS: &[&str] = &[
+    "claude-3-7-sonnet-latest",
+    "claude-3-5-haiku-latest",
+    "claude-3-5-sonnet-latest",
+    "claude-3-opus",
+    "claude-3-sonnet",
+];
+const GROK_MODELS: &[&str] = &["grok-3-latest", "grok-3-mini-beta"];
+const COPY_CODE_BLOCKS: &[&str] = &["c", "C", "x", "X"];
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             providers: vec![
                 ProviderConfig {
-                    name: "OpenAI".to_string(),
-                    api_key: "".to_string(),
-                    enabled_models: vec!["gpt-4o".to_string()],
+                    name: "OpenAI".into(),
+                    api_key: String::new(),
+                    enabled_models: OPENAI_MODELS.iter().map(|&s| s.into()).collect(),
                 },
                 ProviderConfig {
-                    name: "Anthropic".to_string(),
-                    api_key: "".to_string(),
-                    enabled_models: vec!["claude-3-opus".to_string()],
+                    name: "Anthropic".into(),
+                    api_key: String::new(),
+                    enabled_models: ANTHROPIC_MODELS.iter().map(|&s| s.into()).collect(),
                 },
                 ProviderConfig {
-                    name: "Grok".to_string(),
-                    api_key: "".to_string(),
-                    enabled_models: vec!["grok-3".to_string()],
+                    name: "Grok".into(),
+                    api_key: String::new(),
+                    enabled_models: GROK_MODELS.iter().map(|&s| s.into()).collect(),
                 },
             ],
             keybindings: KeyBindings {
-                new_chat: "n".to_string(),
-                toggle_sidebar: "s".to_string(),
-                switch_focus: "Tab".to_string(),
-                lock_focus: "l".to_string(),
-                delete_chat: "d".to_string(),
-                copy_code: "y".to_string(),
-                copy_code_blocks: vec![
-                    "c".to_string(),
-                    "C".to_string(),
-                    "x".to_string(),
-                    "X".to_string(),
-                ],
-                insert_mode: "i".to_string(),
-                exit_insert_mode: "Esc".to_string(),
-                command_mode: ":".to_string(),
-                open_settings: "o".to_string(),
+                new_chat: "n".into(),
+                toggle_sidebar: "s".into(),
+                switch_focus: "Tab".into(),
+                lock_focus: "l".into(),
+                delete_chat: "d".into(),
+                copy_code: "y".into(),
+                copy_code_blocks: COPY_CODE_BLOCKS.iter().map(|&s| s.into()).collect(),
+                insert_mode: "i".into(),
+                exit_insert_mode: "Esc".into(),
+                command_mode: ":".into(),
+                open_settings: "o".into(),
             },
-            copy_code_blocks: vec![
-                "c".to_string(),
-                "C".to_string(),
-                "x".to_string(),
-                "X".to_string(),
-            ],
-            // ← new
+            copy_code_blocks: COPY_CODE_BLOCKS.iter().map(|&s| s.into()).collect(),
             custom_models: Vec::new(),
         }
     }
@@ -118,4 +132,14 @@ pub fn load_or_create_config() -> Settings {
 pub fn save_config(settings: &Settings) {
     let path = get_config_path();
     fs::write(&path, toml::to_string_pretty(settings).unwrap()).unwrap();
+}
+
+pub fn openai_models() -> Vec<String> {
+    OPENAI_MODELS.iter().map(|&s| s.into()).collect()
+}
+pub fn anthropic_models() -> Vec<String> {
+    ANTHROPIC_MODELS.iter().map(|&s| s.into()).collect()
+}
+pub fn grok_models() -> Vec<String> {
+    GROK_MODELS.iter().map(|&s| s.into()).collect()
 }

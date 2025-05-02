@@ -261,4 +261,24 @@ fn main() {
 }
 ```
 
-Fammi sapere se hai bisogno di altro!Could you please clarify what you by "coia"? I’m not sure if it’s a typo, an acronym, or something else. I’d be happy help once I understand the context! 😊Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Sono basato su GPT-4, una versione avanzata del modello di linguaggio sviluppato da OpenAI. Come posso assisterti oggi?
+Fammi sapere se hai bisogno di altro!Could you please clarify what you by "coia"? I’m not sure if it’s a typo, an acronym, or something else. I’d be happy help once I understand the context! 😊Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Ciao! Come posso aiutarti oggi?Sono basato su GPT-4, una versione avanzata del modello di linguaggio sviluppato da OpenAI. Come posso assisterti oggi?Ciao! Come stai? Hai bisogno di aiuto con qualcosa?Sure, I can help with that. Could you please specify what kind of function you need? What should the function do?Alright, I'll write a simple Python function that calculates the factorial of a number using recursion. The factorial of a non-negative integer \( n \) is the product of all positive integers less than or equal to \( n \).
+
+Here's the function:
+
+```python
+def factorial(n):
+    """Return the factorial of a non-negative integer n."""
+    if n < 0:
+        raise ValueError("Factorial is not defined for negative numbers.")
+    elif n == 0 or n == 1:
+        return 1
+    else:
+        return n * factorial(n - 1)
+
+# Example usage
+number = 5
+result = factorial(number)
+print(f"The factorial of {number} is {result}")
+```
+
+This function includes a check for negative inputs and uses recursion to compute the factorial. You can test it with different positive integers to see how it works. Let me know if you need anything else!

@@ -1,17 +1,45 @@
-use crate::CustomModel;
+use crate::config::CustomModel;
+use once_cell::sync::Lazy;
 use ratatui::text::Line;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use uuid::Uuid;
+use uuid::Uuid; // <-- Add this!
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Role {
+    User,
+    Assistant,
+}
+
+impl Role {
+    #[inline(always)]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Role::User => "user",
+            Role::Assistant => "assistant",
+        }
+    }
+}
+
+impl From<&str> for Role {
+    fn from(s: &str) -> Self {
+        match s {
+            "user" => Role::User,
+            "assistant" => Role::Assistant,
+            _ => Role::User,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
     pub content: String,
-    pub language: Option<String>, // e.g., "rust", "python"
-    pub start_line: usize,        // Line index of the opening fence
-    pub end_line: usize,          // Line index of the closing fence
+    pub language: Option<String>,
+    pub start_line: usize,
+    pub end_line: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,11 +50,14 @@ pub enum Focus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CustomModelStage {
-    Name,
-    Url,
-    ModelName,
-    ApiKeyChoice, // NEW
-    ApiKeyInput,  // NEW
+    TypeChoice,
+    ProviderChoice,
+    DerivedModelName,
+    StandaloneName,
+    StandaloneUrl,
+    StandaloneModelId,
+    StandaloneApiKeyChoice,
+    StandaloneApiKeyInput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +76,16 @@ pub enum Mode {
 pub struct Message {
     pub role: String,
     pub content: String,
+}
+
+impl Message {
+    #[inline(always)]
+    pub fn new(role: Role, content: impl Into<String>) -> Self {
+        Self {
+            role: role.as_str().to_string(),
+            content: content.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,24 +138,24 @@ pub struct App<'a> {
     pub show_full_message: Option<usize>,
     pub last_width: usize,
     pub line_cache: Vec<(Vec<Line<'a>>, bool)>,
-    pub truncated_messages: HashSet<usize>, // Messages that are truncated (user messages by default)
+    pub truncated_messages: HashSet<usize>,
     pub need_rebuild_cache: bool,
     pub line_to_message: Vec<(usize, bool)>,
     pub focus: Focus,
     pub stream_tasks: HashMap<String, StreamTask>,
     pub error_message: Option<String>,
-    pub code_blocks: Vec<(usize, CodeBlock)>, // (message_idx, CodeBlock)
+    pub code_blocks: Vec<(usize, CodeBlock)>,
     pub api_key_old: String,
     pub api_key_editing_started: bool,
     pub info_message: Option<String>,
-    // for custom model flow
     pub custom_models: Vec<CustomModel>,
     pub custom_model_name_input: String,
     pub custom_model_url_input: String,
     pub custom_model_input_stage: Option<CustomModelStage>,
     pub custom_model_model_input: String,
-    pub custom_model_api_key_choice: Option<String>, // provider name or "Custom"
+    pub custom_model_api_key_choice: Option<String>,
     pub custom_model_api_key_input: String,
+    pub loading_frame: usize,
 }
 
 impl<'a> App<'a> {
@@ -122,23 +163,23 @@ impl<'a> App<'a> {
         let providers = vec![
             Provider {
                 name: "OpenAI".to_string(),
-                api_key: "".to_string(),
-                models: vec!["gpt-4o".to_string(), "gpt-3.5-turbo".to_string()],
-                enabled_models: vec!["gpt-4o".to_string()],
+                api_key: String::new(),
+                models: crate::config::openai_models(),
+                enabled_models: crate::config::openai_models(),
                 expanded: false,
             },
             Provider {
                 name: "Anthropic".to_string(),
-                api_key: "".to_string(),
-                models: vec!["claude-3-opus".to_string()],
-                enabled_models: vec![],
+                api_key: String::new(),
+                models: crate::config::anthropic_models(),
+                enabled_models: crate::config::anthropic_models(),
                 expanded: false,
             },
             Provider {
                 name: "Grok".to_string(),
-                api_key: "".to_string(),
-                models: vec!["grok-3".to_string()],
-                enabled_models: vec!["grok-3".to_string()],
+                api_key: String::new(),
+                models: crate::config::grok_models(),
+                enabled_models: crate::config::grok_models(),
                 expanded: false,
             },
         ];
@@ -181,6 +222,7 @@ impl<'a> App<'a> {
             custom_model_model_input: String::new(),
             custom_model_api_key_choice: None,
             custom_model_api_key_input: String::new(),
+            loading_frame: 0,
         };
         if app.chats.is_empty() {
             app.create_new_chat();
@@ -188,13 +230,14 @@ impl<'a> App<'a> {
         app
     }
 
+    #[inline(always)]
     pub fn toggle_sidebar(&mut self) {
         self.sidebar_visible = !self.sidebar_visible;
-        if !self.sidebar_visible {
-            self.focus = Focus::Chat;
+        self.focus = if self.sidebar_visible {
+            Focus::Sidebar
         } else {
-            self.focus = Focus::Sidebar;
-        }
+            Focus::Chat
+        };
     }
 
     pub fn create_new_chat(&mut self) {
@@ -211,23 +254,34 @@ impl<'a> App<'a> {
         self.chat_scroll = u16::MAX;
         self.cursor_line = 0;
         self.need_rebuild_cache = true;
-        self.truncated_messages.clear(); // Reset for new chat
+        self.truncated_messages.clear();
     }
 
+    #[inline(always)]
     pub fn current_model_name(&self) -> &str {
         &self.current_model
     }
 
-    pub fn enabled_models_flat(&self) -> Vec<(String, String)> {
-        let mut list = vec![];
+    /// Returns a flat list of enabled models (provider, model).
+    pub fn enabled_models_flat(&self) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
+        let mut list = Vec::with_capacity(8);
         for p in &self.providers {
             for m in &p.enabled_models {
-                list.push((p.name.clone(), m.clone()));
+                list.push((Cow::Borrowed(p.name.as_str()), Cow::Borrowed(m.as_str())));
             }
         }
-        // Add custom models
         for cm in &self.custom_models {
-            list.push(("Custom".to_string(), cm.name.clone()));
+            match cm {
+                CustomModel::Derived { provider, model } => {
+                    list.push((
+                        Cow::Borrowed(provider.as_str()),
+                        Cow::Borrowed(model.as_str()),
+                    ));
+                }
+                CustomModel::Standalone { name, .. } => {
+                    list.push((Cow::Borrowed("Custom"), Cow::Borrowed(name.as_str())));
+                }
+            }
         }
         list
     }
@@ -237,16 +291,12 @@ impl<'a> App<'a> {
         for (lines, is_truncated) in &self.line_cache {
             total_lines += lines.len();
             if *is_truncated {
-                total_lines += 1; // For ellipsis line
+                total_lines += 1;
             }
-            total_lines += 1; // For separator
+            total_lines += 1;
         }
-        if total_lines > 0 {
-            self.cursor_line = total_lines - 1;
-        } else {
-            self.cursor_line = 0;
-        }
-        self.chat_scroll = u16::MAX; // Trigger scroll to bottom
+        self.cursor_line = if total_lines > 0 { total_lines - 1 } else { 0 };
+        self.chat_scroll = u16::MAX;
     }
 
     pub fn start_stream(&mut self, chat_id: String) -> Sender<String> {
@@ -262,7 +312,6 @@ impl<'a> App<'a> {
         let mut new_code_blocks = Vec::new();
         let mut processed_chunks = Vec::new();
 
-        // First, process all stream tasks and collect chunks with their chat IDs and message indices
         for (chat_id, task) in self.stream_tasks.iter_mut() {
             while let Ok(chunk) = task.rx.try_recv() {
                 if let Some(chat) = self.chats.iter_mut().find(|c| c.id == *chat_id) {
@@ -273,22 +322,15 @@ impl<'a> App<'a> {
                             last_msg.content.push_str(&chunk);
                             processed_chunks.push((msg_idx - 1, last_msg.content.clone()));
                         } else {
-                            chat.messages.push(Message {
-                                role: "assistant".to_string(),
-                                content: chunk.clone(),
-                            });
+                            chat.messages.push(Message::new(Role::Assistant, &chunk));
                             processed_chunks.push((msg_idx, chunk.clone()));
                         }
                     } else {
-                        chat.messages.push(Message {
-                            role: "assistant".to_string(),
-                            content: chunk.clone(),
-                        });
+                        chat.messages.push(Message::new(Role::Assistant, &chunk));
                         processed_chunks.push((msg_idx, chunk.clone()));
                     }
                     self.need_rebuild_cache = true;
                     content_updated = true;
-                    // Ensure new assistant message is not truncated
                     self.truncated_messages.remove(&msg_idx);
                 }
             }
@@ -303,27 +345,25 @@ impl<'a> App<'a> {
             self.stream_tasks.remove(&chat_id);
         }
 
-        // Now that mutable borrow is dropped, parse code blocks
         for (msg_idx, content) in processed_chunks {
             new_code_blocks.extend(self.parse_code_blocks_helper(msg_idx, &content));
         }
 
-        // Finally, update code_blocks
         self.code_blocks.extend(new_code_blocks);
         if content_updated {
-            self.jump_to_last_message(); // Autoscroll to bottom
+            self.jump_to_last_message();
         }
     }
 
     fn parse_code_blocks_helper(&self, msg_idx: usize, content: &str) -> Vec<(usize, CodeBlock)> {
-        let opening_re = Regex::new(r"^```(\w+)?\s*$").unwrap();
-        let closing_re = Regex::new(r"^```\s*$").unwrap();
+        static OPENING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```(\w+)?\s*$").unwrap());
+        static CLOSING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```\s*$").unwrap());
+
         let mut blocks = Vec::new();
         let mut idx = 0;
         let lines: Vec<&str> = content.lines().collect();
         while idx < lines.len() {
-            if let Some(caps) = opening_re.captures(lines[idx]) {
-                // start of a code block
+            if let Some(caps) = OPENING_RE.captures(lines[idx]) {
                 let lang = caps.get(1).and_then(|m| {
                     let s = m.as_str();
                     if s.is_empty() {
@@ -335,11 +375,10 @@ impl<'a> App<'a> {
                 let start_fence = idx;
                 idx += 1;
                 let mut code_lines = Vec::new();
-                while idx < lines.len() && !closing_re.is_match(lines[idx]) {
+                while idx < lines.len() && !CLOSING_RE.is_match(lines[idx]) {
                     code_lines.push(lines[idx]);
                     idx += 1;
                 }
-                // idx now at closing fence or at end
                 let end_fence = idx;
                 let content_str = code_lines.join("\n");
                 blocks.push((
@@ -347,9 +386,8 @@ impl<'a> App<'a> {
                     CodeBlock {
                         content: content_str,
                         language: lang,
-                        // for UI we want start_line = first code‐line index
                         start_line: start_fence + 1,
-                        end_line: end_fence - 1,
+                        end_line: end_fence.saturating_sub(1),
                     },
                 ));
             }
@@ -358,23 +396,25 @@ impl<'a> App<'a> {
         blocks
     }
 
+    #[inline(always)]
     pub fn set_error(&mut self, message: &str) {
         self.error_message = Some(message.to_string());
     }
 
+    #[inline(always)]
     pub fn clear_error(&mut self) {
         self.error_message = None;
     }
 
+    #[inline(always)]
     pub fn has_valid_chat(&self) -> bool {
         !self.chats.is_empty() && self.current_chat < self.chats.len()
     }
 
+    #[inline(always)]
     pub fn toggle_message_truncation(&mut self, msg_idx: usize) {
-        if self.truncated_messages.contains(&msg_idx) {
+        if !self.truncated_messages.insert(msg_idx) {
             self.truncated_messages.remove(&msg_idx);
-        } else {
-            self.truncated_messages.insert(msg_idx);
         }
         self.need_rebuild_cache = true;
     }
@@ -382,11 +422,8 @@ impl<'a> App<'a> {
     pub fn add_user_message(&mut self, content: String) {
         if let Some(chat) = self.chats.get_mut(self.current_chat) {
             let msg_idx = chat.messages.len();
-            chat.messages.push(Message {
-                role: "user".to_string(),
-                content: content.clone(),
-            });
-            self.truncated_messages.insert(msg_idx); // Truncate user message by default
+            chat.messages.push(Message::new(Role::User, &content));
+            self.truncated_messages.insert(msg_idx);
             self.code_blocks
                 .extend(self.parse_code_blocks_helper(msg_idx, &content));
             self.need_rebuild_cache = true;

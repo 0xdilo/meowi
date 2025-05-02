@@ -41,7 +41,6 @@ pub fn draw(f: &mut Frame<'_>, app: &mut App) {
     }
 }
 
-// one-time loaders
 static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
 static THEME: OnceLock<Theme> = OnceLock::new();
 
@@ -132,9 +131,6 @@ enum MessageSegment {
     },
 }
 
-/// Parse a message into alternating text and code segments.
-/// This ensures code is not duplicated in both text and code block rendering.
-
 fn parse_message_segments(content: &str) -> Vec<MessageSegment> {
     let mut segments = Vec::new();
     let mut lines = content.lines().peekable();
@@ -142,7 +138,6 @@ fn parse_message_segments(content: &str) -> Vec<MessageSegment> {
 
     while let Some(line) = lines.next() {
         if let Some(rest) = line.strip_prefix("```") {
-            // Flush current text
             if !current_text.is_empty() {
                 segments.push(MessageSegment::Text(current_text.join("\n")));
                 current_text.clear();
@@ -159,7 +154,6 @@ fn parse_message_segments(content: &str) -> Vec<MessageSegment> {
                 }
                 code_lines.push(code_line);
             }
-            // Remove first code line if it matches the language (common LLM bug)
             let code_content =
                 if let (Some(ref l), Some(first)) = (lang.as_ref(), code_lines.first()) {
                     if first.trim().eq_ignore_ascii_case(l.trim()) {
@@ -206,7 +200,7 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         .fg(Color::White)
         .bg(Color::Black)
         .add_modifier(Modifier::BOLD);
-    let border_style = Style::default().fg(Color::LightGreen); // Use the selected tab color
+    let border_style = Style::default().fg(Color::LightGreen);
 
     if app.has_valid_chat() {
         let text_width = (chunks[0].width as usize).saturating_sub(4);
@@ -221,7 +215,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             app.line_cache.clear();
             app.code_blocks.clear();
 
-            // Collect message contents first to avoid holding borrow
             let messages: Vec<(usize, String, String)> = app
                 .chats
                 .get(app.current_chat)
@@ -268,7 +261,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                             }
                         }
                         MessageSegment::Code { language, content } => {
-                            // Save code block for copy navigation
                             app.code_blocks.push((
                                 msg_idx,
                                 crate::app::CodeBlock {
@@ -279,19 +271,16 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                                 },
                             ));
 
-                            // Add blank line before code block
                             msg_lines.push(Line::raw(""));
-                            // Top border with lang
                             let lang = language.as_deref().unwrap_or("code");
                             let label = format!(" {} ", lang);
 
-                            let area_width = chunks[0].width.saturating_sub(2) as usize; // minus padding
+                            let area_width = chunks[0].width.saturating_sub(2) as usize;
                             let label = format!(" {} ", lang);
-                            let border_len = area_width.saturating_sub(10 + label.len());
+                            let border_len = area_width.saturating_sub(20 + label.len());
                             let top = format!("┌─{}{}┐", label, "─".repeat(border_len));
                             msg_lines.push(Line::from(vec![Span::styled(top, border_style)]));
 
-                            // Syntax highlight each code line
                             let syntax_set = get_syntax_set();
                             let theme = get_theme();
                             let syntax = syntax_set
@@ -316,14 +305,12 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                                 msg_lines.push(Line::from(spans));
                             }
 
-                            // Bottom border with copy hint, right-aligned
                             let shortcuts = vec!["c", "C", "x", "X"];
-
                             let hint = shortcuts
                                 .get(code_block_count)
                                 .map(|s| format!(" Copy [{}] ", s))
                                 .unwrap_or_default();
-                            let border_len = area_width.saturating_sub(10 + hint.len());
+                            let border_len = area_width.saturating_sub(20 + hint.len());
                             let bottom = format!("└{}{}┘", "─".repeat(border_len), hint);
                             msg_lines.push(Line::from(vec![Span::styled(bottom, border_style)]));
 
@@ -337,7 +324,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             app.need_rebuild_cache = false;
         }
 
-        // Now build buffer_lines and line_to_message for navigation
         let mut global_line_idx = 0;
         for (msg_idx, (lines, is_truncated)) in app.line_cache.iter().enumerate() {
             for (line_idx, line) in lines.iter().enumerate() {
@@ -370,8 +356,35 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 
         app.line_to_message = line_to_message.clone();
 
+        // --- LOADING CAT ANIMATION ---
+        if is_streaming {
+            if let Some(chat) = app.chats.get(app.current_chat) {
+                let last_msg = chat.messages.last();
+                let show_loading = match last_msg {
+                    Some(msg) if msg.role == "assistant" && msg.content.trim().is_empty() => true,
+                    None => true,
+                    _ => false,
+                };
+                if show_loading {
+                    // Cat loading animation frames
+                    let frames = ["🐱   ", "🐱.  ", "🐱.. ", "🐱...", "🐱 ..", "🐱  ."];
+                    let frame = frames[(app.loading_frame / 6) % frames.len()];
+                    buffer_lines.push(Line::from(vec![
+                        Span::styled(
+                            frame,
+                            Style::default()
+                                .fg(Color::Magenta)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::raw("  Waiting for response..."),
+                    ]));
+                }
+            }
+        }
+        // --- END LOADING CAT ANIMATION ---
+
         let total_lines = buffer_lines.len();
-        let viewport_height = chunks[0].height.saturating_sub(10) as usize;
+        let viewport_height = chunks[0].height.saturating_sub(20) as usize;
 
         if total_lines > 0 && app.cursor_line >= total_lines {
             app.cursor_line = total_lines - 1;
@@ -439,7 +452,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         f.render_widget(paragraph, chunks[0]);
     }
 
-    // Input area
     let input_text = match app.mode {
         Mode::Insert | Mode::RenameChat => format!("> {}", app.input),
         Mode::Command => format!(":{}", app.command),
@@ -494,7 +506,6 @@ fn draw_model_select(f: &mut Frame<'_>, app: &App, area: Rect) {
     f.render_stateful_widget(list, area, &mut state);
 }
 
-// helper to mask an API key
 fn mask_api_key(k: &str) -> String {
     if k.len() <= 4 {
         "".repeat(k.len())
@@ -510,7 +521,6 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
         .constraints([Constraint::Length(3), Constraint::Min(1)])
         .split(area);
 
-    // tabs
     let titles = ["Providers", "Shortcuts"]
         .iter()
         .cloned()
@@ -532,13 +542,11 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
 
     f.render_widget(tabs, chunks[0]);
 
-    // split content into main + feedback line
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
         .split(chunks[1]);
 
-    // MODE: entering API key?
     if app.mode == Mode::ApiKeyInput {
         let masked = mask_api_key(&app.api_key_old);
         let text = format!("Current: {}\nNew API Key: {}", masked, app.api_key_input);
@@ -548,39 +556,92 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                 .title("Enter API Key"),
         );
         f.render_widget(paragraph, content_chunks[0]);
-    }
-    // MODE: adding custom model
-    else if app.mode == Mode::CustomModelInput {
+    } else if app.mode == Mode::CustomModelInput {
         match app.custom_model_input_stage.unwrap() {
-            CustomModelStage::Name => {
+            CustomModelStage::TypeChoice => {
+                let items = vec![
+                    ListItem::new("Derived from existing provider"),
+                    ListItem::new("Standalone custom model"),
+                ];
+                let selected = app
+                    .custom_model_api_key_choice
+                    .as_ref()
+                    .map(|choice| if choice == "Derived" { 0 } else { 1 })
+                    .unwrap_or(0);
+                let mut state = ListState::default();
+                state.select(Some(selected));
+                let list = List::new(items)
+                    .block(Block::default().borders(Borders::ALL).title("Model Type"))
+                    .highlight_style(
+                        Style::default()
+                            .bg(Color::Blue)
+                            .add_modifier(Modifier::BOLD),
+                    );
+                f.render_stateful_widget(list, content_chunks[0], &mut state);
+            }
+            CustomModelStage::ProviderChoice => {
+                let items = app
+                    .providers
+                    .iter()
+                    .map(|p| ListItem::new(p.name.clone()))
+                    .collect::<Vec<_>>();
+                let selected = app
+                    .custom_model_api_key_choice
+                    .as_ref()
+                    .and_then(|choice| app.providers.iter().position(|p| p.name == *choice))
+                    .unwrap_or(0);
+                let mut state = ListState::default();
+                state.select(Some(selected));
+                let list = List::new(items)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Select Provider"),
+                    )
+                    .highlight_style(
+                        Style::default()
+                            .bg(Color::Blue)
+                            .add_modifier(Modifier::BOLD),
+                    );
+                f.render_stateful_widget(list, content_chunks[0], &mut state);
+            }
+            CustomModelStage::DerivedModelName => {
+                let p = Paragraph::new(format!("Model Name: {}", app.custom_model_model_input))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Add Derived Model—Name"),
+                    );
+                f.render_widget(p, content_chunks[0]);
+            }
+            CustomModelStage::StandaloneName => {
                 let p = Paragraph::new(format!("Model Name: {}", app.custom_model_name_input))
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .title("Add Custom Model—Name"),
+                            .title("Add Standalone Model—Name"),
                     );
                 f.render_widget(p, content_chunks[0]);
             }
-            CustomModelStage::Url => {
+            CustomModelStage::StandaloneUrl => {
                 let p = Paragraph::new(format!("Endpoint URL: {}", app.custom_model_url_input))
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .title("Add Custom Model—URL"),
+                            .title("Add Standalone Model—URL"),
                     );
                 f.render_widget(p, content_chunks[0]);
             }
-            CustomModelStage::ModelName => {
+            CustomModelStage::StandaloneModelId => {
                 let p = Paragraph::new(format!("Model ID: {}", app.custom_model_model_input))
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .title("Add Custom Model—Model Name"),
+                            .title("Add Standalone Model—Model ID"),
                     );
                 f.render_widget(p, content_chunks[0]);
             }
-            CustomModelStage::ApiKeyChoice => {
-                // List all providers + "Custom"
+            CustomModelStage::StandaloneApiKeyChoice => {
                 let mut items = app
                     .providers
                     .iter()
@@ -611,7 +672,7 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                     );
                 f.render_stateful_widget(list, content_chunks[0], &mut state);
             }
-            CustomModelStage::ApiKeyInput => {
+            CustomModelStage::StandaloneApiKeyInput => {
                 let p = Paragraph::new(format!("API Key: {}", app.custom_model_api_key_input))
                     .block(
                         Block::default()
@@ -621,16 +682,22 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                 f.render_widget(p, content_chunks[0]);
             }
         }
-    }
-    // normal providers list
-    else if app.settings_tab == SettingsTab::Providers {
+    } else if app.settings_tab == SettingsTab::Providers {
         let mut items = Vec::new();
-        // built‐in providers
         for p in &app.providers {
             let prefix = if p.expanded { "[-]" } else { "[+]" };
             items.push(ListItem::new(format!("{} {}", prefix, p.name)));
+
             if p.expanded {
-                for m in &p.models {
+                // Show the union of p.models and p.enabled_models, sorted and deduped
+                let mut all_models: Vec<String> = p.models.iter().cloned().collect();
+                for m in &p.enabled_models {
+                    if !all_models.contains(m) {
+                        all_models.push(m.clone());
+                    }
+                }
+                all_models.sort();
+                for m in &all_models {
                     let checked = if p.enabled_models.contains(m) {
                         "[x]"
                     } else {
@@ -640,13 +707,18 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                 }
             }
         }
-        // custom models header
         items.push(ListItem::new("Custom Models:"));
-        // each custom model
         for cm in &app.custom_models {
-            items.push(ListItem::new(format!("  {} → {}", cm.name, cm.endpoint)));
+            let display = match cm {
+                CustomModel::Derived { provider, model } => {
+                    format!("  {}:{} (Derived)", provider, model)
+                }
+                CustomModel::Standalone { name, endpoint, .. } => {
+                    format!("  {} → {}", name, endpoint)
+                }
+            };
+            items.push(ListItem::new(display));
         }
-        // add‐new entry
         items.push(ListItem::new("  [Add Custom Model]"));
 
         let mut state = ListState::default();
@@ -660,13 +732,11 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
             );
         f.render_stateful_widget(list, content_chunks[0], &mut state);
     } else {
-        // Shortcuts tab
         let paragraph = Paragraph::new("Shortcut customization coming soon!")
             .block(Block::default().borders(Borders::ALL).title("Shortcuts"));
         f.render_widget(paragraph, content_chunks[0]);
     }
 
-    // feedback line
     if let Some(err) = &app.error_message {
         let p = Paragraph::new(err.clone()).style(Style::default().fg(Color::Red));
         f.render_widget(p, content_chunks[1]);

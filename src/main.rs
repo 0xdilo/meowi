@@ -23,7 +23,6 @@ use tokio::task;
 use url::Url;
 
 #[tokio::main]
-
 async fn main() -> Result<()> {
     let mut app = App::new();
     app.chats = load_history();
@@ -43,9 +42,14 @@ async fn main() -> Result<()> {
         if let Some(p) = app.providers.iter_mut().find(|p| p.name == saved.name) {
             p.api_key = saved.api_key.clone();
             p.enabled_models = saved.enabled_models.clone();
+            for m in &saved.enabled_models {
+                if !p.models.contains(m) {
+                    p.models.push(m.clone());
+                }
+            }
         }
     }
-    // Restore custom models
+
     app.custom_models = config.custom_models.clone();
 
     let enabled = app.enabled_models_flat();
@@ -88,6 +92,7 @@ async fn run_app<B: ratatui::backend::Backend>(
 ) -> Result<()> {
     loop {
         app.process_stream();
+        app.loading_frame = app.loading_frame.wrapping_add(1); // Add this line
         terminal.draw(|f| ui::draw(f, app))?;
 
         if event::poll(Duration::from_millis(50))? {
@@ -204,14 +209,13 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     }
                 }
             }
-
             KeyCode::Char('c') => {
                 if let Some((msg_idx, _)) = app.line_to_message.get(app.cursor_line) {
                     if let Some((_, cb)) =
                         app.code_blocks.iter().find(|(m_idx, _)| m_idx == msg_idx)
                     {
                         clipboard::copy_to_clipboard(&cb.content).await?;
-                        // app.set_error("Code block copied to clipboard");
+                        app.set_error("Code block copied to clipboard");
                     }
                 }
             }
@@ -254,7 +258,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     }
                 }
             }
-
             KeyCode::Enter => {
                 if app.focus == crate::app::Focus::Sidebar {
                     if app.selected_sidebar_idx < app.chats.len() {
@@ -309,30 +312,42 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     let provider_name = model_parts[0];
                     let model_name = model_parts[1];
 
-                    if provider_name == "Custom" {
-                        // Find the custom model by name
-                        if let Some(cm) = app.custom_models.iter().find(|cm| cm.name == model_name)
-                        {
-                            let endpoint = cm.endpoint.clone();
-                            let model_id = cm.model.clone();
-                            // Try to get OpenAI API key from providers or env
-                            let api_key = if let Some(ref key) = cm.api_key {
-                                Some(key.clone())
-                            } else if let Some(ref provider_name) = cm.use_key_from {
-                                app.providers
-                                    .iter()
-                                    .find(|p| &p.name == provider_name)
-                                    .and_then(|p| {
-                                        if !p.api_key.is_empty() {
-                                            Some(p.api_key.clone())
-                                        } else {
-                                            None
-                                        }
-                                    })
+                    let api_key = if provider_name == "Custom" {
+                        // Handle standalone custom models
+                        let mut custom_model_data = None;
+                        if let Some(cm) = app.custom_models.iter().find(|cm| {
+                            if let CustomModel::Standalone { name, .. } = cm {
+                                name == model_name
                             } else {
-                                None
-                            };
+                                false
+                            }
+                        }) {
+                            if let CustomModel::Standalone {
+                                endpoint,
+                                model,
+                                api_key,
+                                use_key_from,
+                                ..
+                            } = cm
+                            {
+                                let key = api_key.clone().or_else(|| {
+                                    use_key_from.as_ref().and_then(|p_name| {
+                                        app.providers.iter().find(|p| &p.name == p_name).and_then(
+                                            |p| {
+                                                if !p.api_key.is_empty() {
+                                                    Some(p.api_key.clone())
+                                                } else {
+                                                    None
+                                                }
+                                            },
+                                        )
+                                    })
+                                });
+                                custom_model_data = Some((endpoint.clone(), model.clone(), key));
+                            }
+                        }
 
+                        if let Some((endpoint, model_id, key)) = custom_model_data {
                             app.add_user_message(msg.clone());
                             let chat = app.chats.get_mut(app.current_chat).unwrap();
                             chat.streaming = true;
@@ -340,11 +355,11 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.need_rebuild_cache = true;
                             app.jump_to_last_message();
 
-                            // Spawn async task for custom model
+                            // Spawn task for standalone custom model
                             task::spawn(async move {
-                                if let Err(e) = api::stream_custom_model(
+                                if let Err(e) = api::stream_openai_compatible(
                                     &endpoint,
-                                    api_key.as_deref(),
+                                    key.as_deref(),
                                     &model_id,
                                     &messages,
                                     tx,
@@ -354,7 +369,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                                     eprintln!("Stream error: {:?}", e);
                                 }
                             });
-
                             app.mode = Mode::Normal;
                             return Ok(());
                         } else {
@@ -362,34 +376,35 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.mode = Mode::Normal;
                             return Ok(());
                         }
-                    }
-
-                    let provider = app.providers.iter().find(|p| p.name == provider_name);
-                    let api_key = match provider {
-                        Some(p) if !p.api_key.is_empty() => p.api_key.clone(),
-                        _ => {
-                            let env_key = match provider_name {
-                                "OpenAI" => "OPENAI_API_KEY",
-                                "Grok" => "GROK_API_KEY",
-                                "Anthropic" => "ANTHROPIC_API_KEY",
-                                _ => {
-                                    app.set_error(&format!(
-                                        "No API key set for provider {}",
-                                        provider_name
-                                    ));
-                                    app.mode = Mode::Normal;
-                                    return Ok(());
-                                }
-                            };
-                            match env::var(env_key) {
-                                Ok(key) if !key.is_empty() => key,
-                                _ => {
-                                    app.set_error(&format!(
-                                "No API key set for provider {}. Set {} or configure in settings.",
-                                provider_name, env_key
-                            ));
-                                    app.mode = Mode::Normal;
-                                    return Ok(());
+                    } else {
+                        // Handle built-in providers and derived custom models
+                        let provider = app.providers.iter().find(|p| p.name == provider_name);
+                        match provider {
+                            Some(p) if !p.api_key.is_empty() => p.api_key.clone(),
+                            _ => {
+                                let env_key = match provider_name {
+                                    "OpenAI" => "OPENAI_API_KEY",
+                                    "Grok" => "GROK_API_KEY",
+                                    "Anthropic" => "ANTHROPIC_API_KEY",
+                                    _ => {
+                                        app.set_error(&format!(
+                                            "No API key set for provider {}",
+                                            provider_name
+                                        ));
+                                        app.mode = Mode::Normal;
+                                        return Ok(());
+                                    }
+                                };
+                                match env::var(env_key) {
+                                    Ok(key) if !key.is_empty() => key,
+                                    _ => {
+                                        app.set_error(&format!(
+                                            "No API key set for provider {}. Set {} or configure in settings.",
+                                            provider_name, env_key
+                                        ));
+                                        app.mode = Mode::Normal;
+                                        return Ok(());
+                                    }
                                 }
                             }
                         }
@@ -405,7 +420,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 };
 
                 // Step 2: Perform mutable operations
-                app.add_user_message(msg); // Use new method to ensure truncation
+                app.add_user_message(msg);
                 let chat = app.chats.get_mut(app.current_chat).unwrap();
                 chat.streaming = true;
                 let tx = app.start_stream(chat_id.clone());
@@ -479,55 +494,54 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             }
             KeyCode::Enter => {
                 if app.settings_tab == SettingsTab::Providers {
-                    // Walk exactly the same lines as in draw_settings()
                     let mut idx = 0;
-                    // 1) Providers and their models
-                    'providers: for p in app.providers.iter_mut() {
-                        // provider header is at `idx`
+                    for p in app.providers.iter_mut() {
                         if app.selected_line == idx {
                             p.expanded = !p.expanded;
-                            break 'providers;
+                            return Ok(());
                         }
                         idx += 1;
-                        // if expanded, each model appears next
                         if p.expanded {
-                            for m in p.models.iter() {
+                            let mut all_models: Vec<String> = p.models.iter().cloned().collect();
+                            for m in &p.enabled_models {
+                                if !all_models.contains(m) {
+                                    all_models.push(m.clone());
+                                }
+                            }
+                            all_models.sort();
+                            for m in &all_models {
                                 if app.selected_line == idx {
-                                    // toggle enabled/disabled
                                     if p.enabled_models.contains(m) {
                                         p.enabled_models.retain(|x| x != m);
                                     } else {
                                         p.enabled_models.push(m.clone());
                                     }
-                                    // persist
                                     if let Some(saved) =
                                         config.providers.iter_mut().find(|c| c.name == p.name)
                                     {
                                         saved.enabled_models = p.enabled_models.clone();
                                     }
                                     save_config(config);
-                                    break 'providers;
+                                    return Ok(());
                                 }
                                 idx += 1;
                             }
                         }
                     }
-                    // 2) Custom models header
+
                     let custom_header = idx;
-                    idx += 1; // line for "Custom Models:"
-                    // 3) Each existing custom model
+                    idx += 1;
                     for _ in app.custom_models.iter() {
-                        // (we don't toggle here on Enter; deletion is 'd')
                         idx += 1;
                     }
-                    // 4) "[Add Custom Model]" line
                     if app.selected_line == idx {
                         app.mode = Mode::CustomModelInput;
-                        app.custom_model_input_stage = Some(crate::app::CustomModelStage::Name);
+                        app.custom_model_input_stage =
+                            Some(crate::app::CustomModelStage::TypeChoice);
                         app.custom_model_name_input.clear();
                         app.custom_model_url_input.clear();
                         app.error_message = None;
-                        app.info_message = Some("Enter new model name".to_string());
+                        app.info_message = Some("Choose model type".to_string());
                     }
                 }
             }
@@ -559,10 +573,10 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 let end = start + app.custom_models.len();
                 if (start..end).contains(&app.selected_line) {
                     let cm_idx = app.selected_line - start;
-                    let removed = app.custom_models.remove(cm_idx);
+                    app.custom_models.remove(cm_idx);
                     config.custom_models.remove(cm_idx);
                     save_config(config);
-                    app.info_message = Some(format!("Deleted custom model '{}'", removed.name));
+                    app.info_message = Some("Deleted custom model".to_string());
                     app.error_message = None;
                     if app.selected_line >= end - 1 {
                         app.selected_line = end - 1;
@@ -654,10 +668,19 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 app.error_message = None;
                 app.info_message = None;
                 match app.custom_model_input_stage.unwrap() {
-                    crate::app::CustomModelStage::Name => app.custom_model_name_input.push(c),
-                    crate::app::CustomModelStage::Url => app.custom_model_url_input.push(c),
-                    crate::app::CustomModelStage::ModelName => app.custom_model_model_input.push(c),
-                    crate::app::CustomModelStage::ApiKeyInput => {
+                    crate::app::CustomModelStage::DerivedModelName => {
+                        app.custom_model_model_input.push(c)
+                    }
+                    crate::app::CustomModelStage::StandaloneName => {
+                        app.custom_model_name_input.push(c)
+                    }
+                    crate::app::CustomModelStage::StandaloneUrl => {
+                        app.custom_model_url_input.push(c)
+                    }
+                    crate::app::CustomModelStage::StandaloneModelId => {
+                        app.custom_model_model_input.push(c)
+                    }
+                    crate::app::CustomModelStage::StandaloneApiKeyInput => {
                         app.custom_model_api_key_input.push(c)
                     }
                     _ => {}
@@ -666,25 +689,60 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             KeyCode::Backspace => {
                 app.error_message = None;
                 match app.custom_model_input_stage.unwrap() {
-                    crate::app::CustomModelStage::Name => {
-                        app.custom_model_name_input.pop();
-                    }
-                    crate::app::CustomModelStage::Url => {
-                        app.custom_model_url_input.pop();
-                    }
-                    crate::app::CustomModelStage::ModelName => {
+                    crate::app::CustomModelStage::DerivedModelName => {
                         app.custom_model_model_input.pop();
                     }
-                    crate::app::CustomModelStage::ApiKeyInput => {
+
+                    crate::app::CustomModelStage::StandaloneName => {
+                        app.custom_model_name_input.pop();
+                    }
+                    crate::app::CustomModelStage::StandaloneUrl => {
+                        app.custom_model_url_input.pop();
+                    }
+
+                    crate::app::CustomModelStage::StandaloneModelId => {
+                        app.custom_model_model_input.pop();
+                    }
+                    crate::app::CustomModelStage::StandaloneApiKeyInput => {
                         app.custom_model_api_key_input.pop();
                     }
                     _ => {}
                 }
             }
-            KeyCode::Down | KeyCode::Up => {
-                if app.custom_model_input_stage == Some(crate::app::CustomModelStage::ApiKeyChoice)
-                {
-                    // Cycle through providers + "Custom"
+            KeyCode::Down | KeyCode::Up => match app.custom_model_input_stage.unwrap() {
+                crate::app::CustomModelStage::TypeChoice => {
+                    let items = vec!["Derived", "Standalone"];
+                    let cur = app
+                        .custom_model_api_key_choice
+                        .as_ref()
+                        .and_then(|choice| items.iter().position(|&n| n == choice))
+                        .unwrap_or(0);
+                    let next = if key.code == KeyCode::Down {
+                        (cur + 1) % items.len()
+                    } else {
+                        (cur + items.len() - 1) % items.len()
+                    };
+                    app.custom_model_api_key_choice = Some(items[next].to_string());
+                }
+                crate::app::CustomModelStage::ProviderChoice => {
+                    let items = app
+                        .providers
+                        .iter()
+                        .map(|p| p.name.clone())
+                        .collect::<Vec<_>>();
+                    let cur = app
+                        .custom_model_api_key_choice
+                        .as_ref()
+                        .and_then(|choice| items.iter().position(|n| n == choice))
+                        .unwrap_or(0);
+                    let next = if key.code == KeyCode::Down {
+                        (cur + 1) % items.len()
+                    } else {
+                        (cur + items.len() - 1) % items.len()
+                    };
+                    app.custom_model_api_key_choice = Some(items[next].clone());
+                }
+                crate::app::CustomModelStage::StandaloneApiKeyChoice => {
                     let mut items = app
                         .providers
                         .iter()
@@ -703,20 +761,74 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     };
                     app.custom_model_api_key_choice = Some(items[next].clone());
                 }
-            }
+                _ => {}
+            },
             KeyCode::Enter => match app.custom_model_input_stage.unwrap() {
-                crate::app::CustomModelStage::Name => {
+                crate::app::CustomModelStage::TypeChoice => {
+                    if let Some(choice) = &app.custom_model_api_key_choice {
+                        app.custom_model_input_stage = Some(if choice == "Derived" {
+                            crate::app::CustomModelStage::ProviderChoice
+                        } else {
+                            crate::app::CustomModelStage::StandaloneName
+                        });
+                        if choice == "Derived" {
+                            app.custom_model_api_key_choice = Some(app.providers[0].name.clone());
+                        }
+                    }
+                }
+                crate::app::CustomModelStage::ProviderChoice => {
+                    if app.custom_model_api_key_choice.is_some() {
+                        app.custom_model_input_stage =
+                            Some(crate::app::CustomModelStage::DerivedModelName);
+                    }
+                }
+                crate::app::CustomModelStage::DerivedModelName => {
+                    let model = app.custom_model_model_input.trim().to_string();
+                    let provider = app.custom_model_api_key_choice.clone();
+                    if model.is_empty() {
+                        app.error_message = Some("Model name cannot be empty".to_string());
+                    } else if model.len() > 50 {
+                        app.error_message = Some("Model name too long".to_string());
+                    } else if let Some(provider) = provider {
+                        let new_cm = CustomModel::Derived {
+                            provider: provider.clone(),
+                            model: model.clone(),
+                        };
+                        app.custom_models.push(new_cm.clone());
+                        config.custom_models.push(new_cm.clone());
+                        save_config(config);
+                        app.mode = Mode::Settings;
+                        app.custom_model_input_stage = None;
+                        app.custom_model_name_input.clear();
+                        app.custom_model_url_input.clear();
+                        app.custom_model_model_input.clear();
+                        app.custom_model_api_key_choice = None;
+                        app.custom_model_api_key_input.clear();
+                        app.info_message =
+                            Some(format!("Added derived model '{}:{}'", provider, model));
+                        let mut idx = 0;
+                        for p in &app.providers {
+                            idx += 1;
+                            if p.expanded {
+                                idx += p.models.len();
+                            }
+                        }
+                        let custom_header = idx;
+                        app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
+                    }
+                }
+                crate::app::CustomModelStage::StandaloneName => {
                     let nm = app.custom_model_name_input.trim();
                     if nm.is_empty() {
                         app.error_message = Some("Model name cannot be empty".to_string());
                     } else if nm.len() > 50 {
                         app.error_message = Some("Model name too long".to_string());
                     } else {
-                        app.error_message = None;
-                        app.custom_model_input_stage = Some(crate::app::CustomModelStage::Url);
+                        app.custom_model_input_stage =
+                            Some(crate::app::CustomModelStage::StandaloneUrl);
                     }
                 }
-                crate::app::CustomModelStage::Url => {
+                crate::app::CustomModelStage::StandaloneUrl => {
                     let url_str = app.custom_model_url_input.trim();
                     match Url::parse(url_str) {
                         Ok(u)
@@ -724,22 +836,20 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                                 || u.scheme().eq_ignore_ascii_case("https") =>
                         {
                             app.custom_model_input_stage =
-                                Some(crate::app::CustomModelStage::ModelName);
+                                Some(crate::app::CustomModelStage::StandaloneModelId);
                         }
                         _ => {
                             app.error_message = Some("Invalid URL format".to_string());
                         }
                     }
                 }
-                crate::app::CustomModelStage::ModelName => {
+                crate::app::CustomModelStage::StandaloneModelId => {
                     let model_id = app.custom_model_model_input.trim();
                     if model_id.is_empty() {
                         app.error_message = Some("Model ID cannot be empty".to_string());
                     } else {
-                        // Now go to API key choice
                         app.custom_model_input_stage =
-                            Some(crate::app::CustomModelStage::ApiKeyChoice);
-                        // Default to first provider
+                            Some(crate::app::CustomModelStage::StandaloneApiKeyChoice);
                         let mut items = app
                             .providers
                             .iter()
@@ -749,14 +859,13 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.custom_model_api_key_choice = Some(items[0].clone());
                     }
                 }
-                crate::app::CustomModelStage::ApiKeyChoice => {
-                    if let Some(choice) = &app.custom_model_api_key_choice {
+                crate::app::CustomModelStage::StandaloneApiKeyChoice => {
+                    if let Some(choice) = app.custom_model_api_key_choice.clone() {
                         if choice == "Custom" {
                             app.custom_model_input_stage =
-                                Some(crate::app::CustomModelStage::ApiKeyInput);
+                                Some(crate::app::CustomModelStage::StandaloneApiKeyInput);
                         } else {
-                            // Save with use_key_from
-                            let new_cm = CustomModel {
+                            let new_cm = CustomModel::Standalone {
                                 name: app.custom_model_name_input.trim().to_string(),
                                 endpoint: app.custom_model_url_input.trim().to_string(),
                                 model: app.custom_model_model_input.trim().to_string(),
@@ -766,9 +875,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.custom_models.push(new_cm.clone());
                             config.custom_models.push(new_cm.clone());
                             save_config(config);
-                            // Reset state and return to settings
                             app.mode = Mode::Settings;
-                            app.settings_tab = SettingsTab::Providers;
                             app.custom_model_input_stage = None;
                             app.custom_model_name_input.clear();
                             app.custom_model_url_input.clear();
@@ -776,9 +883,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.custom_model_api_key_choice = None;
                             app.custom_model_api_key_input.clear();
                             app.info_message =
-                                Some(format!("Added custom model '{}'", new_cm.name));
-                            app.error_message = None;
-                            // highlight new model
+                                Some(format!("Added standalone model '{}'", new_cm.name()));
                             let mut idx = 0;
                             for p in &app.providers {
                                 idx += 1;
@@ -787,17 +892,16 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                                 }
                             }
                             let custom_header = idx;
-                            let new_model_line = custom_header + 1 + (app.custom_models.len() - 1);
-                            app.selected_line = new_model_line;
+                            app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
                         }
                     }
                 }
-                crate::app::CustomModelStage::ApiKeyInput => {
+                crate::app::CustomModelStage::StandaloneApiKeyInput => {
                     let key = app.custom_model_api_key_input.trim();
                     if key.len() < 8 {
                         app.error_message = Some("API key too short (min 8 chars)".to_string());
                     } else {
-                        let new_cm = CustomModel {
+                        let new_cm = CustomModel::Standalone {
                             name: app.custom_model_name_input.trim().to_string(),
                             endpoint: app.custom_model_url_input.trim().to_string(),
                             model: app.custom_model_model_input.trim().to_string(),
@@ -807,31 +911,24 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.custom_models.push(new_cm.clone());
                         config.custom_models.push(new_cm.clone());
                         save_config(config);
-                        // Reset state and return to settings
                         app.mode = Mode::Settings;
-                        app.settings_tab = SettingsTab::Providers;
                         app.custom_model_input_stage = None;
                         app.custom_model_name_input.clear();
                         app.custom_model_url_input.clear();
                         app.custom_model_model_input.clear();
                         app.custom_model_api_key_choice = None;
                         app.custom_model_api_key_input.clear();
-                        app.info_message = Some(format!("Added custom model '{}'", new_cm.name));
-                        app.error_message = None;
-                        // highlight new model
+                        app.info_message =
+                            Some(format!("Added standalone model '{}'", new_cm.name()));
                         let mut idx = 0;
-
                         for p in &app.providers {
                             idx += 1;
                             if p.expanded {
                                 idx += p.models.len();
                             }
                         }
-
                         let custom_header = idx;
-
-                        let new_model_line = custom_header + 1 + (app.custom_models.len() - 1);
-                        app.selected_line = new_model_line;
+                        app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
                     }
                 }
             },

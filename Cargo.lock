@@ -1254,6 +1254,7 @@ dependencies = [
  "crossterm 0.29.0",
  "directories",
  "futures-util",
+ "once_cell",
  "ratatui",
  "regex",
  "reqwest",
