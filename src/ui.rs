@@ -196,10 +196,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
     let cursor_style = Style::default().bg(Color::Blue);
     let user_style = Style::default().fg(Color::Yellow);
     let assistant_style = Style::default().fg(Color::Green);
-    let code_style = Style::default()
-        .fg(Color::White)
-        .bg(Color::Black)
-        .add_modifier(Modifier::BOLD);
     let border_style = Style::default().fg(Color::LightGreen);
 
     if app.has_valid_chat() {
@@ -265,15 +261,11 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                                 msg_idx,
                                 crate::app::CodeBlock {
                                     content: content.clone(),
-                                    language: language.clone(),
-                                    start_line: msg_lines.len(),
-                                    end_line: msg_lines.len() + content.lines().count() - 1,
                                 },
                             ));
 
                             msg_lines.push(Line::raw(""));
                             let lang = language.as_deref().unwrap_or("code");
-                            let label = format!(" {} ", lang);
 
                             let area_width = chunks[0].width.saturating_sub(2) as usize;
                             let label = format!(" {} ", lang);
@@ -326,7 +318,7 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 
         let mut global_line_idx = 0;
         for (msg_idx, (lines, is_truncated)) in app.line_cache.iter().enumerate() {
-            for (line_idx, line) in lines.iter().enumerate() {
+            for line in lines.iter() {
                 let mut styled_line = line.clone();
                 if global_line_idx == app.cursor_line {
                     styled_line = styled_line.patch_style(cursor_style);

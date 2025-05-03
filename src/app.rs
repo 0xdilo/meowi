@@ -1,12 +1,11 @@
 use crate::config::CustomModel;
-use once_cell::sync::Lazy;
 use ratatui::text::Line;
-use regex::Regex;
+use regex_lite::Regex;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use uuid::Uuid; // <-- Add this!
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Role {
@@ -37,9 +36,6 @@ impl From<&str> for Role {
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
     pub content: String,
-    pub language: Option<String>,
-    pub start_line: usize,
-    pub end_line: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,7 +109,6 @@ pub struct Provider {
 }
 
 pub struct StreamTask {
-    pub chat_id: String,
     pub rx: Receiver<String>,
 }
 
@@ -301,8 +296,7 @@ impl<'a> App<'a> {
 
     pub fn start_stream(&mut self, chat_id: String) -> Sender<String> {
         let (tx, rx) = mpsc::channel(100);
-        self.stream_tasks
-            .insert(chat_id.clone(), StreamTask { chat_id, rx });
+        self.stream_tasks.insert(chat_id.clone(), StreamTask { rx });
         tx
     }
 
@@ -356,38 +350,25 @@ impl<'a> App<'a> {
     }
 
     fn parse_code_blocks_helper(&self, msg_idx: usize, content: &str) -> Vec<(usize, CodeBlock)> {
-        static OPENING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```(\w+)?\s*$").unwrap());
-        static CLOSING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```\s*$").unwrap());
+        let opening_re = Regex::new(r"^```(\w+)?\s*$").unwrap();
+        let closing_re = Regex::new(r"^```\s*$").unwrap();
 
         let mut blocks = Vec::new();
         let mut idx = 0;
         let lines: Vec<&str> = content.lines().collect();
         while idx < lines.len() {
-            if let Some(caps) = OPENING_RE.captures(lines[idx]) {
-                let lang = caps.get(1).and_then(|m| {
-                    let s = m.as_str();
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s.to_string())
-                    }
-                });
-                let start_fence = idx;
+            if let Some(_) = opening_re.captures(lines[idx]) {
                 idx += 1;
                 let mut code_lines = Vec::new();
-                while idx < lines.len() && !CLOSING_RE.is_match(lines[idx]) {
+                while idx < lines.len() && !closing_re.is_match(lines[idx]) {
                     code_lines.push(lines[idx]);
                     idx += 1;
                 }
-                let end_fence = idx;
                 let content_str = code_lines.join("\n");
                 blocks.push((
                     msg_idx,
                     CodeBlock {
                         content: content_str,
-                        language: lang,
-                        start_line: start_fence + 1,
-                        end_line: end_fence.saturating_sub(1),
                     },
                 ));
             }

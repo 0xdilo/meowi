@@ -529,7 +529,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         }
                     }
 
-                    let custom_header = idx;
                     idx += 1;
                     for _ in app.custom_models.iter() {
                         idx += 1;
