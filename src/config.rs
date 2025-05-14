@@ -2,6 +2,24 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct Prompt {
+    pub name: Box<str>,
+    pub content: Box<str>,
+    pub active: bool,
+}
+
+impl Prompt {
+    #[inline]
+    pub fn new<N: Into<Box<str>>, C: Into<Box<str>>>(name: N, content: C, active: bool) -> Self {
+        Self {
+            name: name.into(),
+            content: content.into(),
+            active,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProviderConfig {
     pub name: String,
@@ -54,6 +72,7 @@ pub struct Settings {
     pub keybindings: KeyBindings,
     pub copy_code_blocks: Vec<String>,
     pub custom_models: Vec<CustomModel>,
+    pub prompts: Vec<Prompt>,
 }
 
 const OPENAI_MODELS: &[&str] = &["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"];
@@ -102,6 +121,7 @@ impl Default for Settings {
             },
             copy_code_blocks: COPY_CODE_BLOCKS.iter().map(|&s| s.into()).collect(),
             custom_models: Vec::new(),
+            prompts: vec![Prompt::new("Default", "You are a helpful assistant.", true)],
         }
     }
 }

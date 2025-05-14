@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
     }
     let mut config = load_or_create_config();
 
+    app.prompts = config.prompts.clone();
     for saved in &config.providers {
         if let Some(p) = app.providers.iter_mut().find(|p| p.name == saved.name) {
             p.api_key = saved.api_key.clone();
@@ -77,6 +78,8 @@ async fn main() -> Result<()> {
     terminal.show_cursor()?;
 
     save_history(&app.chats);
+    config.prompts = app.prompts.clone();
+    save_config(&config);
 
     if let Err(err) = res {
         println!("{:?}", err);
@@ -106,6 +109,13 @@ async fn run_app<B: ratatui::backend::Backend>(
 async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Settings) -> Result<()> {
     match app.mode {
         Mode::Normal => match key.code {
+            KeyCode::Char('v') => {
+                app.mode = Mode::Visual;
+                app.visual_start = Some(app.cursor_line);
+                app.visual_end = Some(app.cursor_line);
+                app.info_message = None;
+                app.error_message = None;
+            }
             KeyCode::Char('j') | KeyCode::Down => {
                 if app.focus == crate::app::Focus::Sidebar {
                     if app.selected_sidebar_idx < app.chats.len() {
@@ -160,6 +170,8 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             }
             KeyCode::Char('o') => {
                 app.mode = Mode::Settings;
+                app.info_message = None;
+                app.error_message = None;
             }
             KeyCode::Char('e') => {
                 if let Some((msg_idx, _)) = app.line_to_message.get(app.cursor_line) {
@@ -169,24 +181,38 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             KeyCode::Esc => {
                 if app.show_full_message.is_some() {
                     app.show_full_message = None;
-                } else {
-                    return Err(anyhow::anyhow!("Quit"));
                 }
+                app.info_message = None;
+                app.error_message = None;
+            }
+            KeyCode::Char(':') => {
+                app.mode = Mode::Command;
+                app.command.clear();
+                app.info_message = None;
+                app.error_message = None;
             }
             KeyCode::Char('i') => {
                 app.mode = Mode::Insert;
-                app.clear_error();
+                app.error_message = None;
+                app.info_message = None;
             }
-            KeyCode::Char('n') => app.create_new_chat(),
+            KeyCode::Char('n') => {
+                app.create_new_chat();
+                app.info_message = Some("New chat created".to_string());
+            }
             KeyCode::Char('s') => app.toggle_sidebar(),
             KeyCode::Char('m') => {
                 app.mode = Mode::ModelSelect;
                 app.selected_model_idx = 0;
+                app.info_message = None;
+                app.error_message = None;
             }
             KeyCode::Char('r') => {
                 if app.sidebar_visible && app.selected_sidebar_idx < app.chats.len() {
                     app.input = app.chats[app.selected_sidebar_idx].title.clone();
                     app.mode = Mode::RenameChat;
+                    app.info_message = None;
+                    app.error_message = None;
                 }
             }
             KeyCode::Char('d') => {
@@ -207,6 +233,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.cursor_line = 0;
                         app.need_rebuild_cache = true;
                     }
+                    app.set_info("Chat deleted");
                 }
             }
             KeyCode::Char('c') => {
@@ -214,8 +241,12 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     if let Some((_, cb)) =
                         app.code_blocks.iter().find(|(m_idx, _)| m_idx == msg_idx)
                     {
-                        clipboard::copy_to_clipboard(&cb.content).await?;
-                        app.set_error("Code block copied to clipboard");
+                        match clipboard::copy_to_clipboard(&cb.content).await {
+                            Ok(_) => app.set_info("Code block copied (1st)"),
+                            Err(e) => app.set_error(&format!("Copy failed: {}", e)),
+                        }
+                    } else {
+                        app.set_info("No code block found at cursor");
                     }
                 }
             }
@@ -227,8 +258,12 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         .filter(|(m_idx, _)| m_idx == msg_idx)
                         .nth(1)
                     {
-                        clipboard::copy_to_clipboard(&cb.content).await?;
-                        app.set_error("Code block copied to clipboard");
+                        match clipboard::copy_to_clipboard(&cb.content).await {
+                            Ok(_) => app.set_info("Code block copied (2nd)"),
+                            Err(e) => app.set_error(&format!("Copy failed: {}", e)),
+                        }
+                    } else {
+                        app.set_info("No 2nd code block found for this message");
                     }
                 }
             }
@@ -240,8 +275,12 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         .filter(|(m_idx, _)| m_idx == msg_idx)
                         .nth(2)
                     {
-                        clipboard::copy_to_clipboard(&cb.content).await?;
-                        app.set_error("Code block copied to clipboard");
+                        match clipboard::copy_to_clipboard(&cb.content).await {
+                            Ok(_) => app.set_info("Code block copied (3rd)"),
+                            Err(e) => app.set_error(&format!("Copy failed: {}", e)),
+                        }
+                    } else {
+                        app.set_info("No 3rd code block found for this message");
                     }
                 }
             }
@@ -253,8 +292,12 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         .filter(|(m_idx, _)| m_idx == msg_idx)
                         .nth(3)
                     {
-                        clipboard::copy_to_clipboard(&cb.content).await?;
-                        app.set_error("Code block copied to clipboard");
+                        match clipboard::copy_to_clipboard(&cb.content).await {
+                            Ok(_) => app.set_info("Code block copied (4th)"),
+                            Err(e) => app.set_error(&format!("Copy failed: {}", e)),
+                        }
+                    } else {
+                        app.set_info("No 4th code block found for this message");
                     }
                 }
             }
@@ -270,13 +313,18 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         }
                     } else if app.selected_sidebar_idx == app.chats.len() {
                         app.mode = Mode::Settings;
+                        app.info_message = None;
+                        app.error_message = None;
                     }
                 }
             }
             _ => {}
         },
         Mode::Insert => match key.code {
-            KeyCode::Esc => app.mode = Mode::Normal,
+            KeyCode::Esc => {
+                app.mode = Mode::Normal;
+                app.info_message = None;
+            }
             KeyCode::Enter => {
                 if !app.has_valid_chat() {
                     app.set_error("No chat selected. Press 'n' to create a new chat.");
@@ -286,7 +334,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 let msg = app.input.clone();
                 app.input.clear();
 
-                // Step 1: Gather data immutably
                 let (chat_id, messages, provider_name, model_name, api_key) = {
                     let chat = app
                         .chats
@@ -313,7 +360,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     let model_name = model_parts[1];
 
                     let api_key = if provider_name == "Custom" {
-                        // Handle standalone custom models
                         let mut custom_model_data = None;
                         if let Some(cm) = app.custom_models.iter().find(|cm| {
                             if let CustomModel::Standalone { name, .. } = cm {
@@ -355,7 +401,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.need_rebuild_cache = true;
                             app.jump_to_last_message();
 
-                            // Spawn task for standalone custom model
                             task::spawn(async move {
                                 if let Err(e) = api::stream_openai_compatible(
                                     &endpoint,
@@ -377,7 +422,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             return Ok(());
                         }
                     } else {
-                        // Handle built-in providers and derived custom models
                         let provider = app.providers.iter().find(|p| p.name == provider_name);
                         match provider {
                             Some(p) if !p.api_key.is_empty() => p.api_key.clone(),
@@ -419,7 +463,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     )
                 };
 
-                // Step 2: Perform mutable operations
                 app.add_user_message(msg);
                 let chat = app.chats.get_mut(app.current_chat).unwrap();
                 chat.streaming = true;
@@ -427,7 +470,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 app.need_rebuild_cache = true;
                 app.jump_to_last_message();
 
-                // Step 3: Spawn async task
                 task::spawn(async move {
                     if let Err(e) =
                         api::stream_message(&api_key, &provider_name, &model_name, &messages, tx)
@@ -457,20 +499,33 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     app.selected_model_idx -= 1;
                 }
             }
+
             KeyCode::Enter => {
-                let models = app.enabled_models_flat();
-                if let Some((provider, model)) = models.get(app.selected_model_idx) {
-                    let new_model = format!("{}:{}", provider, model);
-                    app.current_model = new_model.clone();
+                let selected_model_details = {
+                    let models = app.enabled_models_flat();
+                    models
+                        .get(app.selected_model_idx)
+                        .map(|(p, m)| (p.to_string(), m.to_string()))
+                };
+
+                if let Some((provider_owned, model_owned)) = selected_model_details {
+                    let new_model_str = format!("{}:{}", provider_owned, model_owned);
+                    app.current_model = new_model_str.clone();
                     if let Some(chat) = app.chats.get_mut(app.current_chat) {
-                        chat.model = new_model;
+                        chat.model = new_model_str;
                     }
+                    app.set_info(&format!("Model set to {}:{}", provider_owned, model_owned));
                 }
                 app.mode = Mode::Normal;
             }
-            KeyCode::Esc => app.mode = Mode::Normal,
+
+            KeyCode::Esc => {
+                app.mode = Mode::Normal;
+                app.info_message = None;
+            }
             _ => {}
         },
+
         Mode::Settings => match key.code {
             KeyCode::Esc => {
                 app.mode = Mode::Normal;
@@ -479,21 +534,45 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             }
             KeyCode::Char('s') => app.toggle_sidebar(),
             KeyCode::Char('h') | KeyCode::Left => {
-                app.settings_tab = SettingsTab::Providers;
+                app.settings_tab = match app.settings_tab {
+                    SettingsTab::Providers => SettingsTab::Prompts,
+                    SettingsTab::Shortcuts => SettingsTab::Providers,
+                    SettingsTab::Prompts => SettingsTab::Shortcuts,
+                };
             }
             KeyCode::Char('l') | KeyCode::Right => {
-                app.settings_tab = SettingsTab::Shortcuts;
+                app.settings_tab = match app.settings_tab {
+                    SettingsTab::Providers => SettingsTab::Shortcuts,
+                    SettingsTab::Shortcuts => SettingsTab::Prompts,
+                    SettingsTab::Prompts => SettingsTab::Providers,
+                };
             }
-            KeyCode::Char('j') | KeyCode::Down => {
-                app.selected_line += 1;
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                if app.selected_line > 0 {
-                    app.selected_line -= 1;
+            KeyCode::Char('j') | KeyCode::Down => match app.settings_tab {
+                SettingsTab::Providers => {
+                    app.selected_line += 1;
                 }
-            }
-            KeyCode::Enter => {
-                if app.settings_tab == SettingsTab::Providers {
+                SettingsTab::Prompts => {
+                    if app.selected_prompt_idx + 1 < app.prompts.len() + 1 {
+                        app.selected_prompt_idx += 1;
+                    }
+                }
+                SettingsTab::Shortcuts => {}
+            },
+            KeyCode::Char('k') | KeyCode::Up => match app.settings_tab {
+                SettingsTab::Providers => {
+                    if app.selected_line > 0 {
+                        app.selected_line -= 1;
+                    }
+                }
+                SettingsTab::Prompts => {
+                    if app.selected_prompt_idx > 0 {
+                        app.selected_prompt_idx -= 1;
+                    }
+                }
+                SettingsTab::Shortcuts => {}
+            },
+            KeyCode::Enter => match app.settings_tab {
+                SettingsTab::Providers => {
                     let mut idx = 0;
                     for p in app.providers.iter_mut() {
                         if app.selected_line == idx {
@@ -522,6 +601,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                                         saved.enabled_models = p.enabled_models.clone();
                                     }
                                     save_config(config);
+                                    app.set_info("Model enabled/disabled");
                                     return Ok(());
                                 }
                                 idx += 1;
@@ -543,54 +623,137 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.info_message = Some("Choose model type".to_string());
                     }
                 }
-            }
-            KeyCode::Char('e') => {
-                let mut idx = 0;
-                for (_p_idx, p) in app.providers.iter().enumerate() {
-                    if app.selected_line == idx {
-                        app.api_key_input = p.api_key.clone();
-                        app.selected_provider_idx = _p_idx;
-                        app.mode = Mode::ApiKeyInput;
-                        break;
-                    }
-                    idx += 1;
-                    if p.expanded {
-                        idx += p.models.len();
-                    }
-                }
-            }
-            KeyCode::Char('d') if app.settings_tab == SettingsTab::Providers => {
-                let mut idx = 0;
-                for p in &app.providers {
-                    idx += 1;
-                    if p.expanded {
-                        idx += p.models.len();
+                SettingsTab::Prompts => {
+                    if app.selected_prompt_idx < app.prompts.len() {
+                        app.input = app.prompts[app.selected_prompt_idx].content.to_string();
+                        app.prompt_edit_idx = Some(app.selected_prompt_idx);
+                        app.mode = Mode::PromptInput;
+                        app.info_message =
+                            Some("Editing prompt. Press Enter to save, Esc to cancel.".to_string());
+                    } else if app.selected_prompt_idx == app.prompts.len() {
+                        app.input.clear();
+                        app.prompt_edit_idx = None;
+                        app.mode = Mode::PromptInput;
+                        app.info_message = Some(
+                            "Adding new prompt. Press Enter to save, Esc to cancel.".to_string(),
+                        );
                     }
                 }
-                let custom_header = idx;
-                let start = custom_header + 1;
-                let end = start + app.custom_models.len();
-                if (start..end).contains(&app.selected_line) {
-                    let cm_idx = app.selected_line - start;
-                    app.custom_models.remove(cm_idx);
-                    config.custom_models.remove(cm_idx);
-                    save_config(config);
-                    app.info_message = Some("Deleted custom model".to_string());
-                    app.error_message = None;
-                    if app.selected_line >= end - 1 {
-                        app.selected_line = end - 1;
+                SettingsTab::Shortcuts => {}
+            },
+            KeyCode::Char('e') => match app.settings_tab {
+                SettingsTab::Providers => {
+                    let mut current_line_iter = 0;
+                    for (p_idx, p) in app.providers.iter().enumerate() {
+                        if app.selected_line == current_line_iter {
+                            app.api_key_old = p.api_key.clone();
+                            app.api_key_input.clear();
+                            app.selected_provider_idx = p_idx;
+                            app.mode = Mode::ApiKeyInput;
+                            app.api_key_editing_started = false;
+                            app.info_message = Some(
+                                "Enter API Key. Press Enter to save, Esc to cancel.".to_string(),
+                            );
+                            break;
+                        }
+                        current_line_iter += 1;
+                        if p.expanded {
+                            let mut all_models: Vec<String> = p.models.iter().cloned().collect();
+                            for m_enabled in &p.enabled_models {
+                                if !all_models.contains(m_enabled) {
+                                    all_models.push(m_enabled.clone());
+                                }
+                            }
+                            all_models.sort();
+                            current_line_iter += all_models.len();
+                        }
                     }
+                }
+                SettingsTab::Prompts => {
+                    if app.selected_prompt_idx < app.prompts.len() {
+                        app.input = app.prompts[app.selected_prompt_idx].content.to_string();
+                        app.prompt_edit_idx = Some(app.selected_prompt_idx);
+                        app.mode = Mode::PromptInput;
+                        app.info_message =
+                            Some("Editing prompt. Press Enter to save, Esc to cancel.".to_string());
+                    }
+                }
+                SettingsTab::Shortcuts => {}
+            },
+            KeyCode::Char('d') => match app.settings_tab {
+                SettingsTab::Providers => {
+                    let mut current_line_iter = 0;
+                    let mut provider_header_lines = 0;
+                    for p in &app.providers {
+                        provider_header_lines += 1;
+                        if p.expanded {
+                            let mut all_models: Vec<String> = p.models.iter().cloned().collect();
+                            for m_enabled in &p.enabled_models {
+                                if !all_models.contains(m_enabled) {
+                                    all_models.push(m_enabled.clone());
+                                }
+                            }
+                            all_models.sort();
+                            provider_header_lines += all_models.len();
+                        }
+                    }
+
+                    let custom_models_start_line = provider_header_lines + 1; // +1 for "Custom Models:" header
+                    if app.selected_line >= custom_models_start_line
+                        && app.selected_line < custom_models_start_line + app.custom_models.len()
+                    {
+                        let cm_idx_to_remove = app.selected_line - custom_models_start_line;
+                        if cm_idx_to_remove < app.custom_models.len() {
+                            app.custom_models.remove(cm_idx_to_remove);
+                            config.custom_models = app.custom_models.clone();
+                            save_config(config);
+                            app.set_info("Custom model deleted");
+                            if app.selected_line
+                                >= custom_models_start_line + app.custom_models.len()
+                                && !app.custom_models.is_empty()
+                            {
+                                app.selected_line =
+                                    custom_models_start_line + app.custom_models.len() - 1;
+                            } else if app.custom_models.is_empty()
+                                && app.selected_line > custom_models_start_line - 1
+                            {
+                                app.selected_line = custom_models_start_line - 1;
+                            }
+                        }
+                    }
+                }
+                SettingsTab::Prompts => {
+                    if app.selected_prompt_idx < app.prompts.len() {
+                        app.prompts.remove(app.selected_prompt_idx);
+                        if app.selected_prompt_idx >= app.prompts.len() && !app.prompts.is_empty() {
+                            app.selected_prompt_idx = app.prompts.len() - 1;
+                        } else if app.prompts.is_empty() {
+                            app.selected_prompt_idx = 0;
+                        }
+                        app.set_info("Prompt deleted");
+                    }
+                }
+                SettingsTab::Shortcuts => {}
+            },
+            KeyCode::Char(' ') => {
+                if app.settings_tab == SettingsTab::Prompts
+                    && app.selected_prompt_idx < app.prompts.len()
+                {
+                    let prompt = &mut app.prompts[app.selected_prompt_idx];
+                    prompt.active = !prompt.active;
+                    app.set_info("Prompt active status toggled");
                 }
             }
             _ => {}
         },
+
         Mode::ApiKeyInput => match key.code {
             KeyCode::Esc => {
                 app.mode = Mode::Settings;
                 app.api_key_input.clear();
+                app.api_key_old.clear();
                 app.api_key_editing_started = false;
-                app.info_message = Some("API key edit cancelled".to_string());
-                app.error_message = None;
+                app.set_info("API key edit cancelled");
             }
             KeyCode::Char(c) => {
                 app.error_message = None;
@@ -605,14 +768,18 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             }
             KeyCode::Backspace => {
                 app.error_message = None;
+                app.info_message = None;
                 if app.api_key_editing_started {
                     app.api_key_input.pop();
+                } else if !app.api_key_old.is_empty() {
+                    app.api_key_input.clear();
+                    app.api_key_editing_started = true;
                 }
             }
             KeyCode::Enter => {
                 let inp = app.api_key_input.trim();
-                if inp.len() < 8 {
-                    app.error_message = Some("API key too short (min 8 chars)".to_string());
+                if inp.len() < 8 && !inp.is_empty() {
+                    app.set_error("API key too short (min 8 chars)");
                 } else {
                     let p = &mut app.providers[app.selected_provider_idx];
                     p.api_key = inp.to_string();
@@ -622,9 +789,9 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     save_config(config);
                     app.mode = Mode::Settings;
                     app.api_key_input.clear();
+                    app.api_key_old.clear();
                     app.api_key_editing_started = false;
-                    app.info_message = Some("API key updated".to_string());
-                    app.error_message = None;
+                    app.set_info("API key updated");
                 }
             }
             _ => {}
@@ -633,11 +800,13 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             KeyCode::Esc => {
                 app.input.clear();
                 app.mode = Mode::Normal;
+                app.info_message = None;
             }
             KeyCode::Enter => {
                 if app.selected_sidebar_idx < app.chats.len() {
                     if !app.input.trim().is_empty() {
                         app.chats[app.selected_sidebar_idx].title = app.input.clone();
+                        app.set_info("Chat renamed");
                     }
                 }
                 app.input.clear();
@@ -660,8 +829,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 app.custom_model_input_stage = None;
                 app.custom_model_api_key_choice = None;
                 app.custom_model_api_key_input.clear();
-                app.info_message = Some("Custom model addition cancelled".to_string());
-                app.error_message = None;
+                app.set_info("Custom model addition cancelled");
             }
             KeyCode::Char(c) => {
                 app.error_message = None;
@@ -687,6 +855,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             }
             KeyCode::Backspace => {
                 app.error_message = None;
+                app.info_message = None;
                 match app.custom_model_input_stage.unwrap() {
                     crate::app::CustomModelStage::DerivedModelName => {
                         app.custom_model_model_input.pop();
@@ -729,6 +898,9 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         .iter()
                         .map(|p| p.name.clone())
                         .collect::<Vec<_>>();
+                    if items.is_empty() {
+                        return Ok(());
+                    }
                     let cur = app
                         .custom_model_api_key_choice
                         .as_ref()
@@ -748,6 +920,9 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         .map(|p| p.name.clone())
                         .collect::<Vec<_>>();
                     items.push("Custom".to_string());
+                    if items.is_empty() {
+                        return Ok(());
+                    }
                     let cur = app
                         .custom_model_api_key_choice
                         .as_ref()
@@ -771,30 +946,41 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             crate::app::CustomModelStage::StandaloneName
                         });
                         if choice == "Derived" {
-                            app.custom_model_api_key_choice = Some(app.providers[0].name.clone());
+                            if !app.providers.is_empty() {
+                                app.custom_model_api_key_choice =
+                                    Some(app.providers[0].name.clone());
+                            } else {
+                                app.set_error("No providers available for derived model");
+                                app.custom_model_input_stage =
+                                    Some(crate::app::CustomModelStage::TypeChoice);
+                            }
+                        } else {
+                            app.custom_model_api_key_choice = None;
                         }
+                        app.info_message = None;
                     }
                 }
                 crate::app::CustomModelStage::ProviderChoice => {
                     if app.custom_model_api_key_choice.is_some() {
                         app.custom_model_input_stage =
                             Some(crate::app::CustomModelStage::DerivedModelName);
+                        app.info_message = None;
                     }
                 }
                 crate::app::CustomModelStage::DerivedModelName => {
                     let model = app.custom_model_model_input.trim().to_string();
                     let provider = app.custom_model_api_key_choice.clone();
                     if model.is_empty() {
-                        app.error_message = Some("Model name cannot be empty".to_string());
+                        app.set_error("Model name cannot be empty");
                     } else if model.len() > 50 {
-                        app.error_message = Some("Model name too long".to_string());
+                        app.set_error("Model name too long");
                     } else if let Some(provider) = provider {
                         let new_cm = CustomModel::Derived {
                             provider: provider.clone(),
                             model: model.clone(),
                         };
                         app.custom_models.push(new_cm.clone());
-                        config.custom_models.push(new_cm.clone());
+                        config.custom_models = app.custom_models.clone();
                         save_config(config);
                         app.mode = Mode::Settings;
                         app.custom_model_input_stage = None;
@@ -803,28 +989,35 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.custom_model_model_input.clear();
                         app.custom_model_api_key_choice = None;
                         app.custom_model_api_key_input.clear();
-                        app.info_message =
-                            Some(format!("Added derived model '{}:{}'", provider, model));
-                        let mut idx = 0;
-                        for p in &app.providers {
-                            idx += 1;
-                            if p.expanded {
-                                idx += p.models.len();
+                        app.set_info(&format!("Added derived model '{}:{}'", provider, model));
+                        let mut current_line_iter = 0;
+                        for p_iter in &app.providers {
+                            current_line_iter += 1;
+                            if p_iter.expanded {
+                                let mut all_models_iter: Vec<String> =
+                                    p_iter.models.iter().cloned().collect();
+                                for m_enabled_iter in &p_iter.enabled_models {
+                                    if !all_models_iter.contains(m_enabled_iter) {
+                                        all_models_iter.push(m_enabled_iter.clone());
+                                    }
+                                }
+                                all_models_iter.sort();
+                                current_line_iter += all_models_iter.len();
                             }
                         }
-                        let custom_header = idx;
-                        app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
+                        app.selected_line = current_line_iter + 1 + (app.custom_models.len() - 1);
                     }
                 }
                 crate::app::CustomModelStage::StandaloneName => {
                     let nm = app.custom_model_name_input.trim();
                     if nm.is_empty() {
-                        app.error_message = Some("Model name cannot be empty".to_string());
+                        app.set_error("Model name cannot be empty");
                     } else if nm.len() > 50 {
-                        app.error_message = Some("Model name too long".to_string());
+                        app.set_error("Model name too long");
                     } else {
                         app.custom_model_input_stage =
                             Some(crate::app::CustomModelStage::StandaloneUrl);
+                        app.info_message = None;
                     }
                 }
                 crate::app::CustomModelStage::StandaloneUrl => {
@@ -836,16 +1029,17 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         {
                             app.custom_model_input_stage =
                                 Some(crate::app::CustomModelStage::StandaloneModelId);
+                            app.info_message = None;
                         }
                         _ => {
-                            app.error_message = Some("Invalid URL format".to_string());
+                            app.set_error("Invalid URL format (must be http or https)");
                         }
                     }
                 }
                 crate::app::CustomModelStage::StandaloneModelId => {
                     let model_id = app.custom_model_model_input.trim();
                     if model_id.is_empty() {
-                        app.error_message = Some("Model ID cannot be empty".to_string());
+                        app.set_error("Model ID cannot be empty");
                     } else {
                         app.custom_model_input_stage =
                             Some(crate::app::CustomModelStage::StandaloneApiKeyChoice);
@@ -855,7 +1049,10 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             .map(|p| p.name.clone())
                             .collect::<Vec<_>>();
                         items.push("Custom".to_string());
-                        app.custom_model_api_key_choice = Some(items[0].clone());
+                        if !items.is_empty() {
+                            app.custom_model_api_key_choice = Some(items[0].clone());
+                        }
+                        app.info_message = None;
                     }
                 }
                 crate::app::CustomModelStage::StandaloneApiKeyChoice => {
@@ -863,6 +1060,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         if choice == "Custom" {
                             app.custom_model_input_stage =
                                 Some(crate::app::CustomModelStage::StandaloneApiKeyInput);
+                            app.info_message = None;
                         } else {
                             let new_cm = CustomModel::Standalone {
                                 name: app.custom_model_name_input.trim().to_string(),
@@ -872,7 +1070,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                                 use_key_from: Some(choice.clone()),
                             };
                             app.custom_models.push(new_cm.clone());
-                            config.custom_models.push(new_cm.clone());
+                            config.custom_models = app.custom_models.clone();
                             save_config(config);
                             app.mode = Mode::Settings;
                             app.custom_model_input_stage = None;
@@ -881,24 +1079,31 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             app.custom_model_model_input.clear();
                             app.custom_model_api_key_choice = None;
                             app.custom_model_api_key_input.clear();
-                            app.info_message =
-                                Some(format!("Added standalone model '{}'", new_cm.name()));
-                            let mut idx = 0;
-                            for p in &app.providers {
-                                idx += 1;
-                                if p.expanded {
-                                    idx += p.models.len();
+                            app.set_info(&format!("Added standalone model '{}'", new_cm.name()));
+                            let mut current_line_iter = 0;
+                            for p_iter in &app.providers {
+                                current_line_iter += 1;
+                                if p_iter.expanded {
+                                    let mut all_models_iter: Vec<String> =
+                                        p_iter.models.iter().cloned().collect();
+                                    for m_enabled_iter in &p_iter.enabled_models {
+                                        if !all_models_iter.contains(m_enabled_iter) {
+                                            all_models_iter.push(m_enabled_iter.clone());
+                                        }
+                                    }
+                                    all_models_iter.sort();
+                                    current_line_iter += all_models_iter.len();
                                 }
                             }
-                            let custom_header = idx;
-                            app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
+                            app.selected_line =
+                                current_line_iter + 1 + (app.custom_models.len() - 1);
                         }
                     }
                 }
                 crate::app::CustomModelStage::StandaloneApiKeyInput => {
                     let key = app.custom_model_api_key_input.trim();
                     if key.len() < 8 {
-                        app.error_message = Some("API key too short (min 8 chars)".to_string());
+                        app.set_error("API key too short (min 8 chars)");
                     } else {
                         let new_cm = CustomModel::Standalone {
                             name: app.custom_model_name_input.trim().to_string(),
@@ -908,7 +1113,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                             use_key_from: None,
                         };
                         app.custom_models.push(new_cm.clone());
-                        config.custom_models.push(new_cm.clone());
+                        config.custom_models = app.custom_models.clone();
                         save_config(config);
                         app.mode = Mode::Settings;
                         app.custom_model_input_stage = None;
@@ -917,23 +1122,144 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         app.custom_model_model_input.clear();
                         app.custom_model_api_key_choice = None;
                         app.custom_model_api_key_input.clear();
-                        app.info_message =
-                            Some(format!("Added standalone model '{}'", new_cm.name()));
-                        let mut idx = 0;
-                        for p in &app.providers {
-                            idx += 1;
-                            if p.expanded {
-                                idx += p.models.len();
+                        app.set_info(&format!("Added standalone model '{}'", new_cm.name()));
+                        let mut current_line_iter = 0;
+                        for p_iter in &app.providers {
+                            current_line_iter += 1;
+                            if p_iter.expanded {
+                                let mut all_models_iter: Vec<String> =
+                                    p_iter.models.iter().cloned().collect();
+                                for m_enabled_iter in &p_iter.enabled_models {
+                                    if !all_models_iter.contains(m_enabled_iter) {
+                                        all_models_iter.push(m_enabled_iter.clone());
+                                    }
+                                }
+                                all_models_iter.sort();
+                                current_line_iter += all_models_iter.len();
                             }
                         }
-                        let custom_header = idx;
-                        app.selected_line = custom_header + 1 + (app.custom_models.len() - 1);
+                        app.selected_line = current_line_iter + 1 + (app.custom_models.len() - 1);
                     }
                 }
             },
             _ => {}
         },
-        Mode::Command => {}
+
+        Mode::Command => match key.code {
+            KeyCode::Esc => {
+                app.mode = Mode::Normal;
+                app.command.clear();
+                app.info_message = None;
+            }
+            KeyCode::Enter => {
+                let cmd = app.command.trim();
+                if cmd == "q" {
+                    return Err(anyhow::anyhow!("Quit"));
+                } else {
+                    app.set_error(&format!("Unknown command: :{}", cmd));
+                    app.mode = Mode::Normal;
+                    app.command.clear();
+                }
+            }
+            KeyCode::Backspace => {
+                app.command.pop();
+            }
+            KeyCode::Char(c) => {
+                app.command.push(c);
+            }
+            _ => {}
+        },
+
+        Mode::PromptInput => match key.code {
+            KeyCode::Esc => {
+                app.input.clear();
+                app.mode = Mode::Settings;
+                app.prompt_edit_idx = None;
+                app.set_info("Prompt edit cancelled");
+            }
+            KeyCode::Enter => {
+                let prompt_content = app.input.trim();
+                if !prompt_content.is_empty() {
+                    if let Some(idx) = app.prompt_edit_idx {
+                        if let Some(prompt) = app.prompts.get_mut(idx) {
+                            prompt.content = prompt_content.into();
+                            app.set_info("Prompt updated");
+                        }
+                    } else {
+                        app.prompts.push(crate::config::Prompt::new(
+                            format!("Prompt {}", app.prompts.len() + 1),
+                            prompt_content,
+                            false,
+                        ));
+                        app.set_info("New prompt added");
+                    }
+                } else {
+                    app.set_info("Prompt content cannot be empty");
+                }
+                app.input.clear();
+                app.mode = Mode::Settings;
+                app.prompt_edit_idx = None;
+            }
+            KeyCode::Backspace => {
+                app.input.pop();
+            }
+            KeyCode::Char(c) => {
+                app.input.push(c);
+            }
+            _ => {}
+        },
+        Mode::Visual => match key.code {
+            KeyCode::Char('y') => {
+                if let (Some(start_idx), Some(end_idx)) = (app.visual_start, app.visual_end) {
+                    let (lo, hi) = if start_idx <= end_idx {
+                        (start_idx, end_idx)
+                    } else {
+                        (end_idx, start_idx)
+                    };
+
+                    let selected_lines: Vec<String> = (lo..=hi)
+                        .filter_map(|i| app.display_buffer_text_content.get(i).cloned())
+                        .collect();
+
+                    if !selected_lines.is_empty() {
+                        let text_to_copy = selected_lines.join("\n");
+                        match clipboard::copy_to_clipboard(&text_to_copy).await {
+                            Ok(_) => {
+                                app.set_info(&format!("Yanked {} line(s)", selected_lines.len()));
+                            }
+                            Err(e) => app.set_error(&format!("Copy failed: {}", e)),
+                        }
+                    } else {
+                        app.set_info("Nothing to yank");
+                    }
+                } else {
+                    app.set_info("Visual selection not active");
+                }
+                app.mode = Mode::Normal;
+                app.visual_start = None;
+                app.visual_end = None;
+            }
+            KeyCode::Esc => {
+                app.mode = Mode::Normal;
+                app.visual_start = None;
+                app.visual_end = None;
+                app.info_message = None;
+                app.error_message = None;
+            }
+            KeyCode::Char('j') | KeyCode::Down => {
+                app.cursor_line = app.cursor_line.saturating_add(1);
+                app.visual_end = Some(app.cursor_line);
+                app.info_message = None;
+                app.error_message = None;
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                app.cursor_line = app.cursor_line.saturating_sub(1);
+                app.visual_end = Some(app.cursor_line);
+                app.info_message = None;
+                app.error_message = None;
+            }
+            _ => {}
+        },
     }
     Ok(())
 }

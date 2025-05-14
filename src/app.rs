@@ -1,4 +1,4 @@
-use crate::config::CustomModel;
+use crate::config::{CustomModel, Prompt};
 use ratatui::text::Line;
 use regex_lite::Regex;
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,8 @@ pub enum Mode {
     ApiKeyInput,
     RenameChat,
     CustomModelInput,
+    PromptInput,
+    Visual,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +99,7 @@ pub struct Chat {
 pub enum SettingsTab {
     Providers,
     Shortcuts,
+    Prompts,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +154,12 @@ pub struct App<'a> {
     pub custom_model_api_key_choice: Option<String>,
     pub custom_model_api_key_input: String,
     pub loading_frame: usize,
+    pub prompts: Vec<Prompt>,
+    pub selected_prompt_idx: usize,
+    pub prompt_edit_idx: Option<usize>,
+    pub visual_start: Option<usize>,
+    pub visual_end: Option<usize>,
+    pub display_buffer_text_content: Vec<String>,
 }
 
 impl<'a> App<'a> {
@@ -218,6 +227,12 @@ impl<'a> App<'a> {
             custom_model_api_key_choice: None,
             custom_model_api_key_input: String::new(),
             loading_frame: 0,
+            prompts: Vec::new(),
+            selected_prompt_idx: 0,
+            prompt_edit_idx: None,
+            visual_start: None,
+            visual_end: None,
+            display_buffer_text_content: Vec::new(),
         };
         if app.chats.is_empty() {
             app.create_new_chat();
@@ -257,7 +272,6 @@ impl<'a> App<'a> {
         &self.current_model
     }
 
-    /// Returns a flat list of enabled models (provider, model).
     pub fn enabled_models_flat(&self) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
         let mut list = Vec::with_capacity(8);
         for p in &self.providers {
@@ -380,11 +394,23 @@ impl<'a> App<'a> {
     #[inline(always)]
     pub fn set_error(&mut self, message: &str) {
         self.error_message = Some(message.to_string());
+        self.info_message = None;
     }
 
     #[inline(always)]
     pub fn clear_error(&mut self) {
         self.error_message = None;
+    }
+
+    #[inline(always)]
+    pub fn set_info(&mut self, message: &str) {
+        self.info_message = Some(message.to_string());
+        self.error_message = None;
+    }
+
+    #[inline(always)]
+    pub fn clear_info(&mut self) {
+        self.info_message = None;
     }
 
     #[inline(always)]
