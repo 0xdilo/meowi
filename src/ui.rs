@@ -1,7 +1,11 @@
 use crate::app::{App, CustomModelStage, Mode, SettingsTab};
+use crate::config;
 use crate::config::CustomModel;
+use ratatui::prelude::Alignment;
+use ratatui::prelude::Margin;
 use ratatui::widgets::ListState;
 use ratatui::widgets::Padding;
+use ratatui::widgets::Wrap;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -190,8 +194,8 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         app.jump_to_last_message();
     }
 
-    let mut buffer_lines = Vec::new();
-    let mut line_to_message = Vec::new();
+    let mut buffer_lines: Vec<Line> = Vec::new();
+    let mut line_to_message_map: Vec<(usize, bool)> = Vec::new();
 
     let visual_selection_style = Style::default().bg(Color::Indexed(57));
     let cursor_style = Style::default().bg(Color::Blue);
@@ -212,32 +216,31 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             app.line_cache.clear();
             app.code_blocks.clear();
 
-            let messages: Vec<(usize, String, String)> = app
+            let current_chat_messages = app
                 .chats
                 .get(app.current_chat)
-                .map(|chat| {
-                    chat.messages
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, msg)| (idx, msg.role.clone(), msg.content.clone()))
-                        .collect()
-                })
-                .unwrap_or_default();
+                .map_or_else(Vec::new, |chat| chat.messages.clone());
 
-            for (msg_idx, role, content) in messages {
-                let mut msg_lines = Vec::new();
-                let mut is_truncated = false;
+            for (original_msg_idx, message) in current_chat_messages.iter().enumerate() {
+                if message.role == "system" {
+                    continue;
+                }
 
-                let segments = parse_message_segments(&content);
-                let mut code_block_count = 0;
+                let role = &message.role;
+                let content = &message.content;
+                let mut msg_lines_for_cache = Vec::new();
+                let mut is_truncated_for_cache = false;
+
+                let segments = parse_message_segments(content);
+                let mut code_block_count_for_message = 0;
 
                 for segment in segments {
                     match segment {
-                        MessageSegment::Text(text) => {
-                            let wrapped_lines = wrap(&text, text_width);
-                            let is_trunc = app.truncated_messages.contains(&msg_idx)
+                        MessageSegment::Text(text_content) => {
+                            let wrapped_lines = wrap(&text_content, text_width.max(1));
+                            let is_trunc = app.truncated_messages.contains(&original_msg_idx)
                                 && wrapped_lines.len() > MAX_VISIBLE_LINES_PER_MESSAGE;
-                            let lines: Vec<Line> = wrapped_lines
+                            let lines_to_render: Vec<Line> = wrapped_lines
                                 .iter()
                                 .take(if is_trunc {
                                     MAX_VISIBLE_LINES_PER_MESSAGE
@@ -245,96 +248,148 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                                     wrapped_lines.len()
                                 })
                                 .map(|line| {
-                                    Line::from(line.to_string()).style(if role == "user" {
+                                    Line::from(line.to_string()).style(if *role == "user" {
                                         user_style
                                     } else {
                                         assistant_style
                                     })
                                 })
                                 .collect();
-                            msg_lines.extend(lines);
+                            msg_lines_for_cache.extend(lines_to_render);
                             if is_trunc {
-                                is_truncated = true;
+                                is_truncated_for_cache = true;
                             }
                         }
-                        MessageSegment::Code { language, content } => {
+                        MessageSegment::Code {
+                            language,
+                            content: code_block_content,
+                        } => {
                             app.code_blocks.push((
-                                msg_idx,
+                                original_msg_idx,
                                 crate::app::CodeBlock {
-                                    content: content.clone(),
+                                    content: code_block_content.clone(),
                                 },
                             ));
+                            msg_lines_for_cache.push(Line::raw(""));
+                            let lang_display = language.as_deref().unwrap_or("code");
 
-                            msg_lines.push(Line::raw(""));
-                            let lang = language.as_deref().unwrap_or("code");
-
-                            let area_width = chunks[0].width.saturating_sub(2) as usize;
-                            let label = format!(" {} ", lang);
-                            let border_len = area_width.saturating_sub(20 + label.len());
-                            let top = format!("┌─{}{}┐", label, "─".repeat(border_len));
-                            msg_lines.push(Line::from(vec![Span::styled(top, border_style)]));
+                            let block_width = chunks[0].width as usize;
+                            let label = format!(" {} ", lang_display);
+                            let border_len = block_width.saturating_sub(2 + label.len());
+                            let right = if border_len > 0 {
+                                border_len - border_len / 2
+                            } else {
+                                0
+                            };
+                            let top_border_str = format!("┌{}{}┐", label, "─".repeat(right));
+                            msg_lines_for_cache
+                                .push(Line::from(vec![Span::styled(top_border_str, border_style)]));
 
                             let syntax_set = get_syntax_set();
                             let theme = get_theme();
                             let syntax = syntax_set
-                                .find_syntax_by_token(lang)
+                                .find_syntax_by_token(lang_display)
                                 .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
                             let mut h = HighlightLines::new(syntax, theme);
-                            for code in content.lines() {
-                                let ranges = h.highlight_line(code, syntax_set).unwrap();
-                                let mut spans = vec![Span::styled("│ ", border_style)];
-                                for (style, text) in ranges {
-                                    spans.push(Span::styled(
-                                        text.to_string(),
+
+                            for code_line_content in code_block_content.lines() {
+                                let ranges = h
+                                    .highlight_line(code_line_content, syntax_set)
+                                    .unwrap_or_default();
+                                let mut spans_for_line = vec![Span::styled("│ ", border_style)];
+                                for (style, text_segment) in ranges {
+                                    spans_for_line.push(Span::styled(
+                                        text_segment.to_string(),
                                         Style::default()
                                             .fg(Color::Rgb(
                                                 style.foreground.r,
                                                 style.foreground.g,
                                                 style.foreground.b,
                                             ))
-                                            .bg(Color::Black),
+                                            .bg(Color::Rgb(
+                                                style.background.r,
+                                                style.background.g,
+                                                style.background.b,
+                                            )),
                                     ));
                                 }
-                                msg_lines.push(Line::from(spans));
+                                msg_lines_for_cache.push(Line::from(spans_for_line));
                             }
 
-                            let shortcuts = vec!["c", "C", "x", "X"];
-                            let hint = shortcuts
-                                .get(code_block_count)
+                            let app_config = config::load_or_create_config();
+                            let shortcuts = &app_config.keybindings.copy_code_blocks;
+                            let hint_text = shortcuts
+                                .get(code_block_count_for_message)
                                 .map(|s| format!(" Copy [{}] ", s))
                                 .unwrap_or_default();
-                            let border_len = area_width.saturating_sub(20 + hint.len());
-                            let bottom = format!("└{}{}┘", "─".repeat(border_len), hint);
-                            msg_lines.push(Line::from(vec![Span::styled(bottom, border_style)]));
+                            let border_len = block_width.saturating_sub(2 + hint_text.len());
+                            let right = if border_len > 0 {
+                                border_len - border_len / 2
+                            } else {
+                                0
+                            };
+                            let bottom_border_str = format!("└{}{}┘", hint_text, "─".repeat(right));
+                            msg_lines_for_cache.push(Line::from(vec![Span::styled(
+                                bottom_border_str,
+                                border_style,
+                            )]));
+                            msg_lines_for_cache.push(Line::raw(""));
 
-                            code_block_count += 1;
+                            code_block_count_for_message += 1;
                         }
                     }
                 }
-                app.line_cache.push((msg_lines, is_truncated));
+                app.line_cache
+                    .push((msg_lines_for_cache, is_truncated_for_cache));
             }
             app.need_rebuild_cache = false;
         }
 
         let mut global_line_idx = 0;
-        for (msg_idx, (lines, is_truncated)) in app.line_cache.iter().enumerate() {
-            for line in lines.iter() {
-                buffer_lines.push(line.clone());
-                line_to_message.push((msg_idx, false));
-                global_line_idx += 1;
+        let mut current_displayable_message_cache_idx = 0;
+
+        let original_messages_count = app
+            .chats
+            .get(app.current_chat)
+            .map_or(0, |c| c.messages.len());
+
+        for original_msg_idx in 0..original_messages_count {
+            if app.chats[app.current_chat].messages[original_msg_idx].role == "system" {
+                continue;
             }
-            if *is_truncated {
-                buffer_lines
-                    .push(Line::from("...".to_string()).style(Style::default().fg(Color::Gray)));
-                line_to_message.push((msg_idx, true));
+
+            if current_displayable_message_cache_idx < app.line_cache.len() {
+                let (lines_from_cache, is_truncated_from_cache) =
+                    &app.line_cache[current_displayable_message_cache_idx];
+
+                for line_content in lines_from_cache.iter() {
+                    buffer_lines.push(line_content.clone());
+                    line_to_message_map.push((original_msg_idx, false));
+                    global_line_idx += 1;
+                }
+                if *is_truncated_from_cache {
+                    buffer_lines.push(
+                        Line::from("...".to_string()).style(Style::default().fg(Color::Gray)),
+                    );
+                    line_to_message_map.push((original_msg_idx, true));
+                    global_line_idx += 1;
+                }
+                buffer_lines.push(Line::raw(""));
+                line_to_message_map.push((original_msg_idx, false));
                 global_line_idx += 1;
+
+                current_displayable_message_cache_idx += 1;
             }
-            buffer_lines.push(Line::raw(""));
-            line_to_message.push((msg_idx, false));
-            global_line_idx += 1;
+        }
+        if !is_streaming
+            && !buffer_lines.is_empty()
+            && buffer_lines.last().map_or(false, |l| l.spans.is_empty())
+        {
+            buffer_lines.pop();
+            line_to_message_map.pop();
         }
 
-        app.line_to_message = line_to_message.clone();
+        app.line_to_message = line_to_message_map.clone();
 
         app.display_buffer_text_content = buffer_lines
             .iter()
@@ -348,18 +403,25 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 
         if is_streaming {
             if let Some(chat) = app.chats.get(app.current_chat) {
-                let last_msg = chat.messages.last();
-                let show_loading = match last_msg {
+                let last_visible_msg = chat.messages.iter().rev().find(|m| m.role != "system");
+                let show_loading = match last_visible_msg {
                     Some(msg) if msg.role == "assistant" && msg.content.trim().is_empty() => true,
-                    None => true,
+                    None if !chat.messages.is_empty()
+                        && chat.messages.iter().all(|m| m.role == "system") =>
+                    {
+                        true
+                    }
+                    None if chat.messages.is_empty() => true,
                     _ => false,
                 };
+
                 if show_loading {
                     let frames = ["🐱   ", "🐱.  ", "🐱.. ", "🐱...", "🐱 ..", "🐱  ."];
-                    let frame = frames[(app.loading_frame / 6) % frames.len()];
+                    let frame_idx = (app.loading_frame / 6) % frames.len();
+                    let frame_content = frames[frame_idx];
                     buffer_lines.push(Line::from(vec![
                         Span::styled(
-                            frame,
+                            frame_content,
                             Style::default()
                                 .fg(Color::Magenta)
                                 .add_modifier(Modifier::BOLD),
@@ -371,25 +433,25 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         }
 
         let total_lines = buffer_lines.len();
-        let viewport_height = chunks[0].height.saturating_sub(20) as usize;
+        let viewport_height = chunks[0].height.saturating_sub(20).max(1) as usize;
 
         if total_lines > 0 && app.cursor_line >= total_lines {
-            app.cursor_line = total_lines - 1;
+            app.cursor_line = total_lines.saturating_sub(1);
         }
 
         let max_scroll = total_lines.saturating_sub(viewport_height);
         app.max_chat_scroll = max_scroll as u16;
-        if app.chat_scroll == u16::MAX {
-            app.chat_scroll = max_scroll as u16;
-        } else if app.chat_scroll as usize > max_scroll {
+
+        if app.chat_scroll == u16::MAX || (app.chat_scroll as usize) > max_scroll {
             app.chat_scroll = max_scroll as u16;
         }
 
         if app.cursor_line < app.chat_scroll as usize {
             app.chat_scroll = app.cursor_line as u16;
-        } else if app.cursor_line >= app.chat_scroll as usize + viewport_height {
+        } else if app.cursor_line >= (app.chat_scroll as usize + viewport_height) {
             app.chat_scroll = (app.cursor_line + 1).saturating_sub(viewport_height) as u16;
         }
+        app.chat_scroll = app.chat_scroll.min(app.max_chat_scroll);
 
         let is_visual = app.mode == crate::app::Mode::Visual;
         let (vstart, vend) = match (app.visual_start, app.visual_end) {
@@ -398,33 +460,28 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         };
 
         let is_focused = app.focus == crate::app::Focus::Chat;
-        let title = if is_streaming {
+        let title_text = if is_streaming {
             format!("{} ⏳", app.current_model_name())
         } else {
             app.current_model_name().to_string()
         };
 
-        let mut display_lines = Vec::with_capacity(buffer_lines.len());
+        let mut display_lines_for_paragraph = Vec::with_capacity(buffer_lines.len());
         for (idx, line) in buffer_lines.iter().enumerate() {
             let mut styled_line = line.clone();
-            if is_visual
-                && app.visual_start.is_some()
-                && app.visual_end.is_some()
-                && idx >= vstart
-                && idx <= vend
-            {
+            if is_visual && idx >= vstart && idx <= vend {
                 styled_line = styled_line.patch_style(visual_selection_style);
             }
             if idx == app.cursor_line {
                 styled_line = styled_line.patch_style(cursor_style);
             }
-            display_lines.push(styled_line);
+            display_lines_for_paragraph.push(styled_line);
         }
 
-        let paragraph = Paragraph::new(display_lines)
+        let paragraph = Paragraph::new(display_lines_for_paragraph)
             .block(
                 Block::default()
-                    .title(title)
+                    .title(title_text)
                     .borders(Borders::ALL)
                     .padding(Padding {
                         left: 1,
@@ -439,27 +496,34 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                         Color::DarkGray
                     })),
             )
-            .wrap(ratatui::widgets::Wrap { trim: false })
+            .wrap(Wrap { trim: false })
             .scroll((app.chat_scroll, 0));
+
         f.render_widget(paragraph, chunks[0]);
-        let scrollbar_content_length = total_lines.max(viewport_height);
-        let scrollbar_position = (app.chat_scroll as usize)
-            .min(max_scroll)
-            .min(scrollbar_content_length.saturating_sub(viewport_height));
-        let mut scrollbar_state =
-            ScrollbarState::new(scrollbar_content_length).position(scrollbar_position);
-        f.render_stateful_widget(
-            Scrollbar::new(ScrollbarOrientation::VerticalRight),
-            chunks[0],
-            &mut scrollbar_state,
-        );
+
+        let scrollbar_content_length = total_lines;
+        if scrollbar_content_length > viewport_height {
+            let mut scrollbar_state =
+                ScrollbarState::new(scrollbar_content_length).position(app.chat_scroll as usize);
+            f.render_stateful_widget(
+                Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                    .style(Style::default().fg(Color::DarkGray)),
+                chunks[0].inner(Margin {
+                    vertical: 1,
+                    horizontal: 0,
+                }),
+                &mut scrollbar_state,
+            );
+        }
     } else {
-        let paragraph = Paragraph::new("Start a new chat with 'n'").block(
-            Block::default()
-                .title(app.current_model_name())
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::Cyan)),
-        );
+        let paragraph = Paragraph::new("Start a new chat with 'n'")
+            .block(
+                Block::default()
+                    .title(app.current_model_name())
+                    .borders(Borders::ALL)
+                    .style(Style::default().fg(Color::Cyan)),
+            )
+            .alignment(Alignment::Center);
         f.render_widget(paragraph, chunks[0]);
         app.display_buffer_text_content.clear();
     }
@@ -494,11 +558,10 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
         Color::White
     });
 
-    let input_block_title = match app.mode {
+    let input_block_title_str = match app.mode {
         Mode::Insert => "Insert",
         Mode::RenameChat => "Rename Chat",
         Mode::Command => "Command",
-        Mode::PromptInput => "Prompt Input",
         Mode::Visual => "Visual",
         Mode::Normal => "Status",
         _ => "Input",
@@ -506,10 +569,12 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
 
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .title(input_block_title)
+        .title(input_block_title_str)
         .style(input_block_style);
 
-    let input_paragraph = Paragraph::new(input_text_display).block(input_block);
+    let input_paragraph = Paragraph::new(input_text_display)
+        .block(input_block)
+        .wrap(Wrap { trim: true });
     f.render_widget(input_paragraph, chunks[1]);
 }
 
@@ -583,7 +648,6 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
     let main_settings_content_area = content_chunks[0];
     let settings_status_area = content_chunks[1];
 
-    // Handle specific input modes first
     if app.mode == Mode::ApiKeyInput {
         let masked = mask_api_key(&app.api_key_old);
         let text = format!("Current: {}\nNew API Key: {}", masked, app.api_key_input);
@@ -648,7 +712,8 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                         Block::default()
                             .borders(Borders::ALL)
                             .title("Add Derived Model—Name"),
-                    );
+                    )
+                    .wrap(Wrap { trim: true });
                 f.render_widget(p, main_settings_content_area);
             }
             CustomModelStage::StandaloneName => {
@@ -657,7 +722,8 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                         Block::default()
                             .borders(Borders::ALL)
                             .title("Add Standalone Model—Name"),
-                    );
+                    )
+                    .wrap(Wrap { trim: true });
                 f.render_widget(p, main_settings_content_area);
             }
             CustomModelStage::StandaloneUrl => {
@@ -666,7 +732,8 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                         Block::default()
                             .borders(Borders::ALL)
                             .title("Add Standalone Model—URL"),
-                    );
+                    )
+                    .wrap(Wrap { trim: true });
                 f.render_widget(p, main_settings_content_area);
             }
             CustomModelStage::StandaloneModelId => {
@@ -675,7 +742,8 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                         Block::default()
                             .borders(Borders::ALL)
                             .title("Add Standalone Model—Model ID"),
-                    );
+                    )
+                    .wrap(Wrap { trim: true });
                 f.render_widget(p, main_settings_content_area);
             }
             CustomModelStage::StandaloneApiKeyChoice => {
@@ -715,7 +783,8 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
                         Block::default()
                             .borders(Borders::ALL)
                             .title("Enter API Key"),
-                    );
+                    )
+                    .wrap(Wrap { trim: true });
                 f.render_widget(p, main_settings_content_area);
             }
         }
@@ -730,12 +799,13 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
         } else {
             "Add New Prompt".to_string()
         };
-        let text_input_paragraph = Paragraph::new(format!("Content: {}", app.input))
-            .block(Block::default().borders(Borders::ALL).title(title));
+        let text_to_display = format!("Content: {}", app.input);
+        let text_input_paragraph = Paragraph::new(text_to_display)
+            .block(Block::default().borders(Borders::ALL).title(title))
+            .wrap(Wrap { trim: true });
+
         f.render_widget(text_input_paragraph, main_settings_content_area);
-    }
-    // If not in a specific input mode, draw based on the selected tab
-    else if app.settings_tab == SettingsTab::Prompts {
+    } else if app.settings_tab == SettingsTab::Prompts {
         let mut items = Vec::new();
         for prompt in &app.prompts {
             let status = if prompt.active { "[x]" } else { "[ ]" };
@@ -805,13 +875,11 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
             );
         f.render_stateful_widget(list, main_settings_content_area, &mut state);
     } else {
-        // SettingsTab::Shortcuts
         let paragraph = Paragraph::new("Shortcut customization coming soon!")
             .block(Block::default().borders(Borders::ALL).title("Shortcuts"));
         f.render_widget(paragraph, main_settings_content_area);
     }
 
-    // Draw error/info message at the bottom
     if let Some(err) = &app.error_message {
         let p = Paragraph::new(err.clone()).style(Style::default().fg(Color::Red));
         f.render_widget(p, settings_status_area);

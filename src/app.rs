@@ -251,10 +251,19 @@ impl<'a> App<'a> {
     }
 
     pub fn create_new_chat(&mut self) {
+        let mut initial_messages = Vec::new();
+        for prompt in &self.prompts {
+            if prompt.active {
+                initial_messages.push(Message {
+                    role: "system".to_string(),
+                    content: prompt.content.to_string(),
+                });
+            }
+        }
         let chat = Chat {
             id: Uuid::new_v4().to_string(),
             title: format!("Chat {}", self.chats.len() + 1),
-            messages: Vec::new(),
+            messages: initial_messages,
             model: self.current_model.clone(),
             streaming: false,
         };

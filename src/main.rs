@@ -95,7 +95,7 @@ async fn run_app<B: ratatui::backend::Backend>(
 ) -> Result<()> {
     loop {
         app.process_stream();
-        app.loading_frame = app.loading_frame.wrapping_add(1); // Add this line
+        app.loading_frame = app.loading_frame.wrapping_add(1);
         terminal.draw(|f| ui::draw(f, app))?;
 
         if event::poll(Duration::from_millis(50))? {
@@ -134,6 +134,30 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                     app.cursor_line = app.cursor_line.saturating_sub(1);
                 }
             }
+            KeyCode::Char('d')
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
+                if app.focus == crate::app::Focus::Chat {
+                    let viewport_height = 10;
+                    let lines = app.display_buffer_text_content.len();
+                    let half_page = (viewport_height.max(1) / 2).max(1);
+                    app.cursor_line = (app.cursor_line + half_page).min(lines.saturating_sub(1));
+                }
+            }
+            KeyCode::Char('u')
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
+                if app.focus == crate::app::Focus::Chat {
+                    let viewport_height = 10;
+                    let half_page = (viewport_height.max(1) / 2).max(1);
+                    app.cursor_line = app.cursor_line.saturating_sub(half_page);
+                }
+            }
+
             KeyCode::Char('g') => {
                 if app.focus == crate::app::Focus::Sidebar {
                     app.selected_sidebar_idx = 0;
@@ -698,7 +722,7 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                         }
                     }
 
-                    let custom_models_start_line = provider_header_lines + 1; // +1 for "Custom Models:" header
+                    let custom_models_start_line = provider_header_lines + 1;
                     if app.selected_line >= custom_models_start_line
                         && app.selected_line < custom_models_start_line + app.custom_models.len()
                     {
@@ -1258,6 +1282,32 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
                 app.info_message = None;
                 app.error_message = None;
             }
+            KeyCode::Char('d')
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
+                if app.focus == crate::app::Focus::Chat {
+                    let viewport_height = 10;
+                    let lines = app.display_buffer_text_content.len();
+                    let half_page = (viewport_height.max(1) / 2).max(1);
+                    app.cursor_line = (app.cursor_line + half_page).min(lines.saturating_sub(1));
+                    app.visual_end = Some(app.cursor_line);
+                }
+            }
+            KeyCode::Char('u')
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
+                if app.focus == crate::app::Focus::Chat {
+                    let viewport_height = 10;
+                    let half_page = (viewport_height.max(1) / 2).max(1);
+                    app.cursor_line = app.cursor_line.saturating_sub(half_page);
+                    app.visual_end = Some(app.cursor_line);
+                }
+            }
+
             _ => {}
         },
     }
