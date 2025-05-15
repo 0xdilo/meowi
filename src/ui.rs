@@ -345,7 +345,6 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
             app.need_rebuild_cache = false;
         }
 
-        let mut global_line_idx = 0;
         let mut current_displayable_message_cache_idx = 0;
 
         let original_messages_count = app
@@ -365,18 +364,15 @@ fn draw_chat(f: &mut Frame<'_>, app: &mut App, area: Rect) {
                 for line_content in lines_from_cache.iter() {
                     buffer_lines.push(line_content.clone());
                     line_to_message_map.push((original_msg_idx, false));
-                    global_line_idx += 1;
                 }
                 if *is_truncated_from_cache {
                     buffer_lines.push(
                         Line::from("...".to_string()).style(Style::default().fg(Color::Gray)),
                     );
                     line_to_message_map.push((original_msg_idx, true));
-                    global_line_idx += 1;
                 }
                 buffer_lines.push(Line::raw(""));
                 line_to_message_map.push((original_msg_idx, false));
-                global_line_idx += 1;
 
                 current_displayable_message_cache_idx += 1;
             }

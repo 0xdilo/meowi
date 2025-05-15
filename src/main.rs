@@ -706,7 +706,6 @@ async fn handle_key(app: &mut App<'_>, key: KeyEvent, config: &mut config::Setti
             },
             KeyCode::Char('d') => match app.settings_tab {
                 SettingsTab::Providers => {
-                    let mut current_line_iter = 0;
                     let mut provider_header_lines = 0;
                     for p in &app.providers {
                         provider_header_lines += 1;

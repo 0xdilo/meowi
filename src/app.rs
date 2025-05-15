@@ -407,19 +407,9 @@ impl<'a> App<'a> {
     }
 
     #[inline(always)]
-    pub fn clear_error(&mut self) {
-        self.error_message = None;
-    }
-
-    #[inline(always)]
     pub fn set_info(&mut self, message: &str) {
         self.info_message = Some(message.to_string());
         self.error_message = None;
-    }
-
-    #[inline(always)]
-    pub fn clear_info(&mut self) {
-        self.info_message = None;
     }
 
     #[inline(always)]
