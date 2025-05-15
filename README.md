@@ -1,10 +1,11 @@
+```bash
       /\_/\
      ( ^.^ )
     /)  "  (\
    ( | ইহাই | )
    (_| ___ |_)
       U   U         MEOWI 🐱
-
+```
 A cozy and powerful terminal companion for chatting with your favorite LLMs.
 
 ## What is Meowi?
