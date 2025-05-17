@@ -75,7 +75,13 @@ pub struct Settings {
     pub prompts: Vec<Prompt>,
 }
 
-const OPENAI_MODELS: &[&str] = &["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"];
+const OPENAI_MODELS: &[&str] = &[
+    "gpt-4.1",
+    "o3-2025-04-16",
+    "o3-mini-2025-01-31",
+    "o4-mini-2025-04-16",
+    "gpt-4o",
+];
 const ANTHROPIC_MODELS: &[&str] = &[
     "claude-3-7-sonnet-latest",
     "claude-3-5-haiku-latest",

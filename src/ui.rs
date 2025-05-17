@@ -829,20 +829,19 @@ pub fn draw_settings(f: &mut Frame<'_>, app: &App, area: Rect) {
             items.push(ListItem::new(format!("{} {}", prefix, p.name)));
 
             if p.expanded {
-                let mut all_models: Vec<String> = p.models.iter().cloned().collect();
-                for m in &p.enabled_models {
-                    if !all_models.contains(m) {
-                        all_models.push(m.clone());
-                    }
-                }
-                all_models.sort();
-                for m in &all_models {
-                    let checked = if p.enabled_models.contains(m) {
+                let mut available_models_to_display = p.models.clone();
+                available_models_to_display.sort_unstable(); // Sort for consistent UI.
+
+                for model_name_to_display in &available_models_to_display {
+                    let checked = if p.enabled_models.contains(model_name_to_display) {
                         "[x]"
                     } else {
                         "[ ]"
                     };
-                    items.push(ListItem::new(format!("    {} {}", checked, m)));
+                    items.push(ListItem::new(format!(
+                        "    {} {}",
+                        checked, model_name_to_display
+                    )));
                 }
             }
         }
